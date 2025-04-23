@@ -1,34 +1,40 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
+import InputForm from './components/InputForm'
+import { FormData } from './components/InputForm'
+
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [formData, setFormData] = useState<FormData | null>(null);
+
+  const handleFormSubmit = (data: FormData) => {
+    setFormData(data);
+    console.log('Datos recibidos:', data);
+    // Aquí se podría realizar cálculos con los datos recibidos
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <div className="app-container">
+      <header>
+        <h1>Simulador de Trayectoria Parabólica</h1>
+      </header>
+      <main>
+        <InputForm onSubmit={handleFormSubmit} />
+        
+        {formData && (
+          <div className="results-container">
+            <h2>Parámetros Configurados</h2>
+            <ul>
+              <li><strong>Velocidad inicial del cañón:</strong> {formData.cannonInitialSpeed} m/s</li>
+              <li><strong>Ángulo del cañón:</strong> {formData.cannonAngle}°</li>
+              <li><strong>Velocidad del avión:</strong> {formData.planeSpeed} m/s</li>
+              <li><strong>Altura del avión:</strong> {formData.planeHeight} m</li>
+            </ul>
+            {/* Aquí se podrían mostrar los resultados de los cálculos */}
+          </div>
+        )}
+      </main>
+    </div>
   )
 }
 
