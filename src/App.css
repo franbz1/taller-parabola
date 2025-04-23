@@ -50,6 +50,12 @@ main {
   text-align: center;
 }
 
+.results-container h3 {
+  color: #2c3e50;
+  font-size: 18px;
+  margin: 15px 0 10px;
+}
+
 .results-container ul {
   list-style: none;
 }
@@ -61,6 +67,25 @@ main {
 
 .results-container li:last-child {
   border-bottom: none;
+}
+
+/* Estilos para el componente de trayectoria */
+.trajectory-display {
+  margin: 20px 0;
+  display: flex;
+  justify-content: center;
+}
+
+.canvas-container {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.parameters-display {
+  margin-top: 15px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
 }
 
 /* Estilos responsivos */
