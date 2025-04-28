@@ -27,7 +27,7 @@ export default function InputForm({ onSubmit, onShowTarget }: InputFormProps) {
     defensorAngle: 45,
     targetDistance: 100,
     enemyHeight: 100,
-    defensorPosition: 20
+    defensorPosition: 0
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
@@ -50,10 +50,6 @@ export default function InputForm({ onSubmit, onShowTarget }: InputFormProps) {
     
     if (formData.enemyHeight <= 0) {
       newErrors.enemyHeight = "La altura del misil enemigo debe ser mayor a 0";
-    }
-    
-    if (formData.defensorPosition < 0 || formData.defensorPosition >= formData.targetDistance) {
-      newErrors.defensorPosition = "La posición del defensor debe estar entre 0 y la distancia a la ciudad";
     }
     
     setErrors(newErrors);
@@ -81,7 +77,7 @@ export default function InputForm({ onSubmit, onShowTarget }: InputFormProps) {
       const targetData: TargetData = {
         targetDistance: formData.targetDistance,
         enemyHeight: formData.enemyHeight,
-        defensorPosition: formData.defensorPosition
+        defensorPosition: 0
       };
       onShowTarget(targetData);
       setTargetShown(true);
@@ -91,7 +87,11 @@ export default function InputForm({ onSubmit, onShowTarget }: InputFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateDefensor()) {
-      onSubmit(formData);
+      const formDataWithDefensorAt0 = {
+        ...formData,
+        defensorPosition: 0
+      };
+      onSubmit(formDataWithDefensorAt0);
     }
   };
 
@@ -133,8 +133,6 @@ export default function InputForm({ onSubmit, onShowTarget }: InputFormProps) {
             />
             {errors.enemyHeight && <span className="error">{errors.enemyHeight}</span>}
           </div>
-          
-         
           
           {!targetShown && (
             <button type="submit" className="submit-btn">Mostrar en el plano</button>

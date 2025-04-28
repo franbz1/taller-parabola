@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import './App.css'
 import InputForm from './components/InputForm'
 import { FormData, TargetData } from './components/InputForm'
+import { calculateEnemyMissileTrajectory } from './lib/parabolicMotion'
 
 function App() {
   // Estado completo del formulario
@@ -12,6 +13,11 @@ function App() {
   
   // Estado para controlar si se debe dibujar la trayectoria
   const [showTrajectory, setShowTrajectory] = useState(false);
+  
+  // Estado para controlar la animación del misil enemigo
+  const [enemyMissileProgress, setEnemyMissileProgress] = useState(0);
+  const [enemyTrajectory, setEnemyTrajectory] = useState<{x: number, y: number}[]>([]);
+  const animationFrameRef = useRef<number | null>(null);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
@@ -27,7 +33,59 @@ function App() {
     console.log('Datos completos:', data);
     setFormParams(data);
     setShowTrajectory(true); // Ahora sí mostrar la trayectoria
+    
+    // Iniciar la animación del misil enemigo
+    if (targetParams) {
+      // Calcular la trayectoria del misil enemigo
+      const trajectory = calculateEnemyMissileTrajectory({
+        startX: targetParams.targetDistance,
+        startY: targetParams.enemyHeight, 
+        initialSpeedX: 0, // Sin velocidad horizontal inicial
+        initialSpeedY: 0, // Sin velocidad vertical inicial (comienza cayendo)
+        timeStep: 0.05
+      });
+      
+      setEnemyTrajectory(trajectory);
+      setEnemyMissileProgress(0);
+      startEnemyMissileAnimation();
+    }
   };
+
+  // Función para iniciar la animación del misil enemigo
+  const startEnemyMissileAnimation = () => {
+    // Detener cualquier animación previa
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+    
+    const startTime = performance.now();
+    // Duración de la animación en milisegundos (ajustar según necesidad)
+    const animationDuration = 3000;
+    
+    const animate = (currentTime: number) => {
+      const elapsedTime = currentTime - startTime;
+      const progress = Math.min(elapsedTime / animationDuration, 1);
+      
+      setEnemyMissileProgress(progress);
+      
+      if (progress < 1) {
+        animationFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        animationFrameRef.current = null;
+      }
+    };
+    
+    animationFrameRef.current = requestAnimationFrame(animate);
+  };
+  
+  // Cancelar cualquier animación al desmontar
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
 
   // Efecto para dibujar el plano cuando cambian los parámetros
   useEffect(() => {
@@ -63,7 +121,7 @@ function App() {
       // Si no hay parámetros, mostrar mensaje de instrucciones
       drawInstructions(ctx, canvas);
     }
-  }, [targetParams, formParams, showTrajectory]);
+  }, [targetParams, formParams, showTrajectory, enemyMissileProgress]);
   
   // Función para dibujar el sistema de coordenadas
   const drawCoordinateSystem = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
@@ -300,22 +358,22 @@ function App() {
     const scaleX = (x: number) => padding + (x / maxX) * graphWidth;
     const scaleY = (y: number) => canvas.height - padding - (y / maxY) * graphHeight;
     
-    const defensorX = scaleX(defensorPosition);
+    // Siempre colocar el defensor en el origen (0,0)
+    const defensorX = scaleX(0);
+    const defensorY = scaleY(0);
     
     // Dibujar la base del lanzador
     ctx.beginPath();
-    ctx.arc(defensorX, scaleY(0), 10, 0, Math.PI * 2);
+    ctx.arc(defensorX, defensorY, 10, 0, Math.PI * 2);
     ctx.fillStyle = '#7f8c8d';
     ctx.fill();
     
     // Cañón en posición horizontal (indicando que aún no se ha configurado)
     ctx.save();
-    ctx.translate(defensorX, scaleY(0));
+    ctx.translate(defensorX, defensorY);
     ctx.fillStyle = '#34495e';
     ctx.fillRect(0, -3, 20, 6);
     ctx.restore();
-    
-
     
     // Mensaje para indicar el siguiente paso
     ctx.font = '14px Arial';
@@ -401,6 +459,24 @@ function App() {
   const drawEnemyMissile = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, 
                           positionX: number, positionY: number,
                           scaleX: (x: number) => number, scaleY: (y: number) => number) => {
+    
+    // Si tenemos trayectoria calculada y el botón simular fue presionado
+    if (enemyTrajectory.length > 0 && showTrajectory) {
+      // Determinar hasta qué punto de la trayectoria mostrar basado en el progreso
+      const pointIndex = Math.min(
+        Math.floor(enemyTrajectory.length * enemyMissileProgress),
+        enemyTrajectory.length - 1
+      );
+      
+      if (pointIndex >= 0) {
+        const currentPoint = enemyTrajectory[pointIndex];
+        
+        // Actualizar posiciones con las de la trayectoria calculada
+        positionX = currentPoint.x;
+        positionY = currentPoint.y;
+      }
+    }
+    
     const x = scaleX(positionX);
     const y = scaleY(positionY);
     
@@ -449,16 +525,34 @@ function App() {
     ctx.fillStyle = '#f39c12';
     ctx.fill();
     
-    // Dibujar línea punteada hacia la ciudad para mostrar trayectoria
-    ctx.beginPath();
-    ctx.setLineDash([3, 3]); // Línea punteada
-    ctx.moveTo(x, y);
-    ctx.lineTo(x, scaleY(0)); // Línea hacia la base (ciudad)
-    ctx.strokeStyle = '#c0392b';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.setLineDash([]); // Restaurar línea normal
-    
+    // Si está en modo simulación, dibujar la trayectoria del misil
+    if (showTrajectory && enemyTrajectory.length > 0) {
+      // Dibujar la trayectoria del misil enemigo hasta el punto actual
+      const pointsToShow = Math.max(1, Math.floor(enemyTrajectory.length * enemyMissileProgress));
+      
+      if (pointsToShow > 1) {
+        ctx.beginPath();
+        ctx.moveTo(scaleX(enemyTrajectory[0].x), scaleY(enemyTrajectory[0].y));
+        
+        for (let i = 1; i < pointsToShow; i++) {
+          ctx.lineTo(scaleX(enemyTrajectory[i].x), scaleY(enemyTrajectory[i].y));
+        }
+        
+        ctx.strokeStyle = '#c0392b';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    } else {
+      // Si no está en modo simulación, mostrar la línea punteada tradicional
+      ctx.beginPath();
+      ctx.setLineDash([3, 3]); // Línea punteada
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, scaleY(0)); // Línea hacia la base (ciudad)
+      ctx.strokeStyle = '#c0392b';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.setLineDash([]); // Restaurar línea normal
+    }
   };
   
   // Función para dibujar una trayectoria parabólica simple
@@ -466,14 +560,16 @@ function App() {
                                params: FormData, 
                                scaleX: (x: number) => number, scaleY: (y: number) => number,
                                maxX: number, maxY: number) => {
-    const { defensorAngle, defensorInitialSpeed, targetDistance, enemyHeight, defensorPosition } = params;
+    const { defensorAngle, defensorInitialSpeed, targetDistance, enemyHeight } = params;
     
-    // Dibujar la base del lanzador
-    const defensorX = scaleX(defensorPosition);
+    // Siempre colocar el defensor en el origen (0,0)
+    const defensorPosition = 0;
+    const defensorX = scaleX(0);
+    const defensorY = scaleY(0);
     
     // Dibujar la base del lanzador
     ctx.beginPath();
-    ctx.arc(defensorX, scaleY(0), 10, 0, Math.PI * 2);
+    ctx.arc(defensorX, defensorY, 10, 0, Math.PI * 2);
     ctx.fillStyle = '#7f8c8d';
     ctx.fill();
     
@@ -482,16 +578,15 @@ function App() {
     const angleRad = (defensorAngle * Math.PI) / 180;
     
     ctx.save();
-    ctx.translate(defensorX, scaleY(0));
+    ctx.translate(defensorX, defensorY);
     ctx.rotate(-angleRad);
     ctx.fillStyle = '#34495e';
     ctx.fillRect(0, -3, cannonLength, 6);
     ctx.restore();
     
-    
     // Usar posición real del defensor para iniciar la trayectoria
     const startX = defensorX + cannonLength * Math.cos(angleRad);
-    const startY = scaleY(0) - cannonLength * Math.sin(angleRad);
+    const startY = defensorY - cannonLength * Math.sin(angleRad);
     
     // Dibujar la trayectoria parabólica
     ctx.beginPath();

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { calculateTrajectory, calculateFlightTime, Point } from '../lib/parabolicMotion';
+import { calculateTrajectory, calculateFlightTime, calculateEnemyMissileTrajectory, Point } from '../lib/parabolicMotion';
 
 interface TrajectoryCanvasProps {
   initialSpeed: number;
@@ -7,6 +7,7 @@ interface TrajectoryCanvasProps {
   width?: number;
   height?: number;
   isInitialState?: boolean;
+  showEnemyMissile?: boolean;
 }
 
 const TrajectoryCanvas: React.FC<TrajectoryCanvasProps> = ({
@@ -14,12 +15,14 @@ const TrajectoryCanvas: React.FC<TrajectoryCanvasProps> = ({
   angle,
   width = 600,
   height = 400,
-  isInitialState = false
+  isInitialState = false,
+  showEnemyMissile = true
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
   const [animationProgress, setAnimationProgress] = useState(0);
   const [trajectory, setTrajectory] = useState<Point[]>([]);
+  const [enemyTrajectory, setEnemyTrajectory] = useState<Point[]>([]);
 
   // Efecto para calcular la trayectoria cuando cambian los parámetros
   useEffect(() => {
@@ -35,6 +38,7 @@ const TrajectoryCanvas: React.FC<TrajectoryCanvasProps> = ({
     // Si estamos en estado inicial o los valores no son válidos, no calcular trayectoria
     if (isInitialState || initialSpeed <= 0) {
       setTrajectory([]);
+      setEnemyTrajectory([]);
       return;
     }
 
@@ -46,6 +50,26 @@ const TrajectoryCanvas: React.FC<TrajectoryCanvasProps> = ({
     });
 
     setTrajectory(newTrajectory);
+
+    // Calcular la trayectoria del misil enemigo
+    if (showEnemyMissile && newTrajectory.length > 0) {
+      // Definir la posición inicial del misil enemigo (al otro lado del campo)
+      const finalX = newTrajectory[newTrajectory.length - 1].x;
+      const enemyStartX = finalX * 0.8; // Posición X algo antes del alcance máximo
+      const enemyStartY = 300; // Altura inicial del misil enemigo
+      
+      const enemyTrajectory = calculateEnemyMissileTrajectory({
+        startX: enemyStartX,
+        startY: enemyStartY,
+        initialSpeedX: -5, // Velocidad negativa para moverse hacia la izquierda
+        initialSpeedY: 0,  // Comienza con caída vertical
+        timeStep: 0.05
+      });
+      
+      setEnemyTrajectory(enemyTrajectory);
+    } else {
+      setEnemyTrajectory([]);
+    }
 
     // Iniciar nueva animación
     if (newTrajectory.length > 0) {
@@ -59,7 +83,7 @@ const TrajectoryCanvas: React.FC<TrajectoryCanvasProps> = ({
         animationRef.current = null;
       }
     };
-  }, [initialSpeed, angle, isInitialState]);
+  }, [initialSpeed, angle, isInitialState, showEnemyMissile]);
 
   // Función para iniciar la animación
   const startAnimation = () => {
@@ -116,8 +140,15 @@ const TrajectoryCanvas: React.FC<TrajectoryCanvasProps> = ({
     const visibleTrajectory = trajectory.slice(0, pointsToShow);
 
     // Encontrar valores máximos para escalar (usar la trayectoria completa para mantener la escala consistente)
-    const maxX = Math.max(...trajectory.map(p => p.x)) * 1.1;
-    const maxY = Math.max(...trajectory.map(p => p.y)) * 1.2;
+    const allPoints = [...trajectory];
+    
+    // Incluir los puntos del misil enemigo en el cálculo de la escala
+    if (enemyTrajectory.length > 0) {
+      allPoints.push(...enemyTrajectory);
+    }
+    
+    const maxX = Math.max(...allPoints.map(p => p.x)) * 1.1;
+    const maxY = Math.max(...allPoints.map(p => p.y)) * 1.2;
 
     // Función para convertir coordenadas del mundo real a coordenadas del canvas
     const scaleX = (x: number) => (x / maxX) * canvas.width;
@@ -166,6 +197,46 @@ const TrajectoryCanvas: React.FC<TrajectoryCanvasProps> = ({
     const currentPoint = visibleTrajectory[visibleTrajectory.length - 1];
     drawPoint(ctx, scaleX(currentPoint.x), scaleY(currentPoint.y), '#e74c3c', 8);
 
+    // Dibujar el misil enemigo si está activado y hay progreso en la animación
+    if (showEnemyMissile && enemyTrajectory.length > 0 && animationProgress > 0) {
+      // Determinar hasta dónde mostrar la trayectoria del misil enemigo
+      const enemyPointsToShow = Math.max(1, Math.floor(enemyTrajectory.length * animationProgress));
+      const visibleEnemyTrajectory = enemyTrajectory.slice(0, enemyPointsToShow);
+      
+      // Dibujar la trayectoria del misil enemigo
+      if (visibleEnemyTrajectory.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(scaleX(visibleEnemyTrajectory[0].x), scaleY(visibleEnemyTrajectory[0].y));
+        
+        for (let i = 1; i < visibleEnemyTrajectory.length; i++) {
+          ctx.lineTo(scaleX(visibleEnemyTrajectory[i].x), scaleY(visibleEnemyTrajectory[i].y));
+        }
+        
+        ctx.strokeStyle = '#2980b9'; // Azul para el misil enemigo
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+      
+      // Dibujar el misil enemigo actual
+      if (visibleEnemyTrajectory.length > 0) {
+        const currentEnemyPoint = visibleEnemyTrajectory[visibleEnemyTrajectory.length - 1];
+        
+        // Dibujar el misil enemigo (un triángulo)
+        ctx.beginPath();
+        const missileX = scaleX(currentEnemyPoint.x);
+        const missileY = scaleY(currentEnemyPoint.y);
+        const missileSize = 10;
+        
+        ctx.moveTo(missileX, missileY - missileSize);
+        ctx.lineTo(missileX + missileSize, missileY + missileSize);
+        ctx.lineTo(missileX - missileSize, missileY + missileSize);
+        ctx.closePath();
+        
+        ctx.fillStyle = '#2980b9';
+        ctx.fill();
+      }
+    }
+
     // Si la animación ha terminado, mostrar los puntos clave y la información
     if (animationProgress === 1) {
       // Punto más alto
@@ -188,7 +259,7 @@ const TrajectoryCanvas: React.FC<TrajectoryCanvasProps> = ({
       ctx.fillText(heightText, 20, 50);
     }
     
-  }, [trajectory, animationProgress, angle, isInitialState]);
+  }, [trajectory, enemyTrajectory, animationProgress, angle, isInitialState, showEnemyMissile]);
 
   // Función auxiliar para dibujar el suelo
   function drawGround(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, scaleY?: (y: number) => number) {

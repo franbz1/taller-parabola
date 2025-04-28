@@ -100,4 +100,51 @@ export function calculateTrajectory(data: TrajectoryData): Point[] {
   }
   
   return points;
+}
+
+/**
+ * Calcula la trayectoria de un misil enemigo que cae desde una posición inicial con una velocidad inicial
+ */
+export function calculateEnemyMissileTrajectory(data: {
+  startX: number;       // Posición inicial X (m)
+  startY: number;       // Posición inicial Y (m)
+  initialSpeedX: number; // Velocidad inicial X (m/s)
+  initialSpeedY: number; // Velocidad inicial Y (m/s)
+  timeStep?: number;    // Paso de tiempo en segundos (opcional)
+}): Point[] {
+  const { startX, startY, initialSpeedX, initialSpeedY, timeStep = 0.05 } = data;
+  
+  const points: Point[] = [];
+  let time = 0;
+  let x = startX;
+  let y = startY;
+  let vx = initialSpeedX;
+  let vy = initialSpeedY;
+  
+  // Añadir posición inicial
+  points.push({ x, y });
+  
+  // Calcular puntos en intervalos regulares hasta que el misil toque el suelo
+  while (y >= 0) {
+    time += timeStep;
+    
+    // Actualizar posición según ecuaciones de movimiento
+    x = startX + vx * time;
+    y = startY + vy * time - 0.5 * GRAVITY * time * time;
+    
+    // Si la posición y ya es negativa (debajo del suelo), ajustar el último punto para que esté en y=0
+    if (y < 0) {
+      // Interpolar para encontrar el punto exacto donde y=0
+      const prevPoint = points[points.length - 1];
+      const ratio = prevPoint.y / (prevPoint.y - y);
+      const finalX = prevPoint.x + ratio * (x - prevPoint.x);
+      
+      points.push({ x: finalX, y: 0 });
+      break;
+    }
+    
+    points.push({ x, y });
+  }
+  
+  return points;
 } 
