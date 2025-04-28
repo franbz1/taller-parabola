@@ -2,10 +2,11 @@ import { useState } from 'react';
 import './InputForm.css';
 
 export interface FormData {
-  cannonInitialSpeed: number;
-  cannonAngle: number;
-  planeSpeed: number;
-  planeHeight: number;
+  defensorInitialSpeed: number;
+  defensorAngle: number;
+  targetDistance: number;
+  enemyHeight: number;
+  defensorPosition: number;
 }
 
 interface InputFormProps {
@@ -14,10 +15,11 @@ interface InputFormProps {
 
 export default function InputForm({ onSubmit }: InputFormProps) {
   const [formData, setFormData] = useState<FormData>({
-    cannonInitialSpeed: 0,
-    cannonAngle: 45,
-    planeSpeed: 0,
-    planeHeight: 0
+    defensorInitialSpeed: 30,
+    defensorAngle: 45,
+    targetDistance: 100,
+    enemyHeight: 100,
+    defensorPosition: 20
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
@@ -33,20 +35,24 @@ export default function InputForm({ onSubmit }: InputFormProps) {
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof FormData, string>> = {};
     
-    if (formData.cannonInitialSpeed <= 0) {
-      newErrors.cannonInitialSpeed = "La velocidad inicial debe ser mayor a 0";
+    if (formData.defensorInitialSpeed <= 0) {
+      newErrors.defensorInitialSpeed = "La velocidad inicial debe ser mayor a 0";
     }
     
-    if (formData.cannonAngle < 0 || formData.cannonAngle > 90) {
-      newErrors.cannonAngle = "El ángulo debe estar entre 0 y 90 grados";
+    if (formData.defensorAngle < 0 || formData.defensorAngle > 90) {
+      newErrors.defensorAngle = "El ángulo debe estar entre 0 y 90 grados";
     }
     
-    if (formData.planeSpeed <= 0) {
-      newErrors.planeSpeed = "La velocidad del avión debe ser mayor a 0";
+    if (formData.targetDistance <= 0) {
+      newErrors.targetDistance = "La distancia al objetivo debe ser mayor a 0";
     }
     
-    if (formData.planeHeight <= 0) {
-      newErrors.planeHeight = "La altura del avión debe ser mayor a 0";
+    if (formData.enemyHeight <= 0) {
+      newErrors.enemyHeight = "La altura del misil enemigo debe ser mayor a 0";
+    }
+    
+    if (formData.defensorPosition < 0 || formData.defensorPosition >= formData.targetDistance) {
+      newErrors.defensorPosition = "La posición del defensor debe estar entre 0 y la distancia a la ciudad";
     }
     
     setErrors(newErrors);
@@ -65,63 +71,65 @@ export default function InputForm({ onSubmit }: InputFormProps) {
       <h2>Configuración de Parámetros</h2>
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="cannonInitialSpeed">Velocidad inicial del cañón (m/s):</label>
+          <label htmlFor="defensorInitialSpeed">Velocidad inicial del misil defensor (m/s):</label>
           <input
             type="number"
-            id="cannonInitialSpeed"
-            name="cannonInitialSpeed"
-            value={formData.cannonInitialSpeed}
+            id="defensorInitialSpeed"
+            name="defensorInitialSpeed"
+            value={formData.defensorInitialSpeed}
             onChange={handleChange}
             step="0.1"
             min="0.1"
           />
-          {errors.cannonInitialSpeed && <span className="error">{errors.cannonInitialSpeed}</span>}
+          {errors.defensorInitialSpeed && <span className="error">{errors.defensorInitialSpeed}</span>}
         </div>
 
         <div className="form-group">
-          <label htmlFor="cannonAngle">Ángulo del cañón (grados):</label>
+          <label htmlFor="defensorAngle">Ángulo de lanzamiento (grados):</label>
           <input
             type="number"
-            id="cannonAngle"
-            name="cannonAngle"
-            value={formData.cannonAngle}
+            id="defensorAngle"
+            name="defensorAngle"
+            value={formData.defensorAngle}
             onChange={handleChange}
             min="0"
             max="90"
             step="0.1"
           />
-          {errors.cannonAngle && <span className="error">{errors.cannonAngle}</span>}
+          {errors.defensorAngle && <span className="error">{errors.defensorAngle}</span>}
         </div>
 
         <div className="form-group">
-          <label htmlFor="planeSpeed">Velocidad del avión (m/s):</label>
+          <label htmlFor="targetDistance">Distancia a la ciudad (m):</label>
           <input
             type="number"
-            id="planeSpeed"
-            name="planeSpeed"
-            value={formData.planeSpeed}
+            id="targetDistance"
+            name="targetDistance"
+            value={formData.targetDistance}
             onChange={handleChange}
-            step="0.1"
-            min="0.1"
+            step="1"
+            min="1"
           />
-          {errors.planeSpeed && <span className="error">{errors.planeSpeed}</span>}
+          {errors.targetDistance && <span className="error">{errors.targetDistance}</span>}
         </div>
 
         <div className="form-group">
-          <label htmlFor="planeHeight">Altura del avión (m):</label>
+          <label htmlFor="enemyHeight">Altura inicial del misil enemigo (m):</label>
           <input
             type="number"
-            id="planeHeight"
-            name="planeHeight"
-            value={formData.planeHeight}
+            id="enemyHeight"
+            name="enemyHeight"
+            value={formData.enemyHeight}
             onChange={handleChange}
-            step="0.1"
-            min="0.1"
+            step="1"
+            min="1"
           />
-          {errors.planeHeight && <span className="error">{errors.planeHeight}</span>}
+          {errors.enemyHeight && <span className="error">{errors.enemyHeight}</span>}
         </div>
+        
+        
 
-        <button type="submit" className="submit-btn">Calcular</button>
+        <button type="submit" className="submit-btn">Simular</button>
       </form>
     </div>
   );
