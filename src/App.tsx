@@ -1,15 +1,32 @@
 import { useState, useRef, useEffect } from 'react'
 import './App.css'
 import InputForm from './components/InputForm'
-import { FormData } from './components/InputForm'
+import { FormData, TargetData } from './components/InputForm'
 
 function App() {
+  // Estado completo del formulario
   const [formParams, setFormParams] = useState<FormData | null>(null);
+  
+  // Estado para la primera etapa (solo objetivo)
+  const [targetParams, setTargetParams] = useState<TargetData | null>(null);
+  
+  // Estado para controlar si se debe dibujar la trayectoria
+  const [showTrajectory, setShowTrajectory] = useState(false);
+  
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
+  // Manejador para la primera etapa: mostrar el objetivo
+  const handleShowTarget = (data: TargetData) => {
+    console.log('Datos del objetivo:', data);
+    setTargetParams(data);
+    setShowTrajectory(false); // Asegurarnos de no mostrar trayectoria aún
+  };
+  
+  // Manejador para la segunda etapa: simular trayectoria
   const handleFormSubmit = (data: FormData) => {
-    console.log('Datos recibidos:', data);
+    console.log('Datos completos:', data);
     setFormParams(data);
+    setShowTrajectory(true); // Ahora sí mostrar la trayectoria
   };
 
   // Efecto para dibujar el plano cuando cambian los parámetros
@@ -23,48 +40,30 @@ function App() {
     // Limpiar el canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Dibujar el plano (ejes X e Y)
-    drawCoordinateSystem(ctx, canvas);
+    // Dibujar el plano (ejes X e Y) y obtener funciones de escalado
+    const { scaleX, scaleY, maxX, maxY } = drawCoordinateSystem(ctx, canvas);
     
-    // Dibujar una trayectoria simulada simple si hay parámetros
-    if (formParams) {
-      drawSimpleTrajectory(ctx, canvas, formParams);
+    // Si tenemos los parámetros del objetivo, mostrarlos
+    if (targetParams) {
+      // Dibujar la ciudad en la posición especificada por el usuario
+      drawCity(ctx, canvas, targetParams.targetDistance, scaleX, scaleY);
+      
+      // Dibujar el misil enemigo sobre la ciudad a la altura especificada
+      drawEnemyMissile(ctx, canvas, targetParams.targetDistance, targetParams.enemyHeight, scaleX, scaleY);
+      
+      // Dibujar la base del defensor
+      drawDefensorBase(ctx, canvas, targetParams.defensorPosition);
+      
+      // Si además tenemos la configuración del defensor y debemos mostrar la trayectoria
+      if (formParams && showTrajectory) {
+        // Dibujar la trayectoria del misil defensor
+        drawSimpleTrajectory(ctx, canvas, formParams, scaleX, scaleY, maxX, maxY);
+      }
     } else {
       // Si no hay parámetros, mostrar mensaje de instrucciones
       drawInstructions(ctx, canvas);
     }
-  }, [formParams]);
-  
-  // Función para mostrar instrucciones cuando no hay datos
-  const drawInstructions = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
-    ctx.font = '16px Arial';
-    ctx.fillStyle = '#555';
-    ctx.textAlign = 'center';
-    ctx.fillText('Complete el formulario y presione "Simular"', canvas.width / 2, canvas.height / 2 - 20);
-    ctx.fillText('para visualizar la trayectoria parabólica', canvas.width / 2, canvas.height / 2 + 10);
-    ctx.fillText('del misil defensor', canvas.width / 2, canvas.height / 2 + 40);
-    
-    // Dibujar un cañón base como ejemplo
-    const padding = 40;
-    ctx.beginPath();
-    ctx.arc(padding + 10, canvas.height - padding, 10, 0, Math.PI * 2);
-    ctx.fillStyle = '#7f8c8d';
-    ctx.fill();
-    
-    // Cañón (tubo) en posición predeterminada
-    ctx.save();
-    ctx.translate(padding + 10, canvas.height - padding);
-    ctx.rotate(-Math.PI / 4); // 45 grados
-    ctx.fillStyle = '#34495e';
-    ctx.fillRect(0, -3, 20, 6);
-    ctx.restore();
-    
-    // Texto para el cañón defensor
-    ctx.font = '10px Arial';
-    ctx.fillStyle = '#333';
-    ctx.textAlign = 'center';
-    ctx.fillText('DEFENSOR', padding + 10, canvas.height - padding + 20);
-  };
+  }, [targetParams, formParams, showTrajectory]);
   
   // Función para dibujar el sistema de coordenadas
   const drawCoordinateSystem = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
@@ -76,9 +75,47 @@ function App() {
     const graphWidth = canvas.width - 2 * padding;
     const graphHeight = canvas.height - 2 * padding;
     
-    // Decidir el espaciado de la cuadrícula - cada 10 metros
-    const gridSpacingX = graphWidth / 10; // 10 divisiones
-    const gridSpacingY = graphHeight / 10; // 10 divisiones
+    // Determinar los valores máximos para los ejes basados en los datos del usuario
+    let maxX = 100; // Valor predeterminado
+    let maxY = 100; // Valor predeterminado
+    
+    if (targetParams) {
+      // Ajustar el eje X basado en la distancia a la ciudad
+      maxX = Math.ceil(targetParams.targetDistance * 1.2); // 20% extra para margen
+      
+      // Ajustar el eje Y basado en la altura del misil enemigo
+      maxY = Math.ceil(targetParams.enemyHeight * 1.5); // 50% extra para margen
+      
+      // Asegurar valores mínimos razonables
+      maxX = Math.max(maxX, 50);
+      maxY = Math.max(maxY, 50);
+      
+      // Ajustar escala para valores muy grandes
+      // Para valores mayores a 1000, usar una escala diferente
+      if (maxY > 1000) {
+        // Redondear a múltiplos de 1000 para números más limpios cuando son grandes
+        maxY = Math.ceil(maxY / 1000) * 1000;
+      } else if (maxY > 100) {
+        // Redondear a múltiplos de 100 para valores medianos
+        maxY = Math.ceil(maxY / 100) * 100;
+      } else {
+        // Redondear a múltiplos de 10 para valores pequeños
+        maxY = Math.ceil(maxY / 10) * 10;
+      }
+      
+      // Lo mismo para el eje X
+      if (maxX > 1000) {
+        maxX = Math.ceil(maxX / 1000) * 1000;
+      } else if (maxX > 100) {
+        maxX = Math.ceil(maxX / 100) * 100;
+      } else {
+        maxX = Math.ceil(maxX / 10) * 10;
+      }
+    }
+    
+    // Decidir el espaciado de la cuadrícula - 10 divisiones
+    const gridSpacingX = graphWidth / 10;
+    const gridSpacingY = graphHeight / 10;
     
     // Dibujar cuadrícula
     ctx.strokeStyle = gridColor;
@@ -139,24 +176,35 @@ function App() {
     // Etiquetas de los ejes
     ctx.font = '14px Arial';
     ctx.fillStyle = axisColor;
-    ctx.textAlign = 'center';
-    ctx.fillText('Distancia (m)', canvas.width / 2, canvas.height - 10);
     
-    ctx.save();
-    ctx.translate(15, canvas.height / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText('Altura (m)', 0, 0);
-    ctx.restore();
+    // Etiqueta para eje X (ahora al final del eje)
+    ctx.textAlign = 'right';
+    const xAxisLabel = maxX >= 1000 ? 'Distancia (km)' : 'Distancia (m)';
+    ctx.fillText(xAxisLabel, canvas.width - padding - 1, canvas.height - padding + 38);
+    
+    // Etiqueta para eje Y (ahora arriba del eje)
+    ctx.textAlign = 'center';
+    const yAxisLabel = maxY >= 1000 ? 'Altura (km)' : 'Altura (m)';
+    ctx.fillText(yAxisLabel, padding, padding - 20);
+    
+    // Función para formatear números grandes de forma legible
+    const formatNumber = (num: number): string => {
+      if (num >= 1000) {
+        // Para números de 4 o más dígitos, mostrar en kilómetros
+        return (num / 1000).toFixed(1);
+      }
+      return num.toString();
+    };
     
     // Marcas y etiquetas en el eje X
     ctx.textAlign = 'center';
     ctx.font = '12px Arial';
-    const maxX = 100; // 100 metros
     const xStep = graphWidth / 10; // 10 divisiones
+    const xValueStep = maxX / 10;
     
     for (let i = 0; i <= 10; i++) {
       const x = padding + i * xStep;
-      const value = Math.round((i / 10) * maxX);
+      const value = Math.round(i * xValueStep);
       
       // Marca
       ctx.beginPath();
@@ -164,18 +212,25 @@ function App() {
       ctx.lineTo(x, canvas.height - padding + 5);
       ctx.stroke();
       
-      // Valor
-      ctx.fillText(`${value}`, x, canvas.height - padding + 20);
+      // Valor formateado para números grandes
+      let displayValue = value;
+      if (maxX >= 1000) {
+        // Si la escala es en km, convertir el valor a km
+        displayValue = value / 1000;
+        ctx.fillText(displayValue.toFixed(1), x, canvas.height - padding + 20);
+      } else {
+        ctx.fillText(value.toString(), x, canvas.height - padding + 20);
+      }
     }
     
     // Coordenadas y etiquetas en el eje Y
     ctx.textAlign = 'right';
-    const maxY = 100; // 100 metros
     const yStep = graphHeight / 10; // 10 divisiones
+    const yValueStep = maxY / 10;
     
     for (let i = 0; i <= 10; i++) {
       const y = canvas.height - padding - i * yStep;
-      const value = Math.round((i / 10) * maxY);
+      const value = Math.round(i * yValueStep);
       
       // Marca
       ctx.beginPath();
@@ -183,34 +238,108 @@ function App() {
       ctx.lineTo(padding, y);
       ctx.stroke();
       
-      // Valor
-      ctx.fillText(`${value}`, padding - 10, y + 4);
+      // Valor formateado para números grandes
+      let displayValue = value;
+      if (maxY >= 1000) {
+        // Si la escala es en km, convertir el valor a km
+        displayValue = value / 1000;
+        ctx.fillText(displayValue.toFixed(1), padding - 10, y + 4);
+      } else {
+        ctx.fillText(value.toString(), padding - 10, y + 4);
+      }
     }
     
     // Etiqueta de origen (0,0)
     ctx.textAlign = 'right';
     ctx.fillText('0', padding - 10, canvas.height - padding + 4);
     
-    // Dibujar la ciudad estática
-    drawCity(ctx, canvas, 80); // Ciudad a 80 metros de distancia
-    
-    // Dibujar el misil enemigo
-    drawEnemyMissile(ctx, canvas, 80, 60); // Misil a 80 metros de distancia y 60 metros de altura
+    // Devolver las funciones de escalado para que otras funciones puedan usarlas
+    return {
+      scaleX: (x: number) => padding + (x / maxX) * graphWidth,
+      scaleY: (y: number) => canvas.height - padding - (y / maxY) * graphHeight,
+      maxX,
+      maxY
+    };
   };
   
-  // Función para dibujar una ciudad simple
-  const drawCity = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, positionX: number) => {
+  // Función para dibujar sólo la base del defensor
+  const drawDefensorBase = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, defensorPosition: number) => {
     const padding = 40;
     const graphWidth = canvas.width - 2 * padding;
     const graphHeight = canvas.height - 2 * padding;
     
-    // Factores de conversión para ajustar a la escala del canvas
-    const maxX = 100; // 100 metros horizontales
-    const maxY = 100; // 100 metros verticales
+    // Determinar los valores máximos para los ejes basados en los datos del usuario
+    let maxX = 100;
+    let maxY = 100;
+    
+    if (targetParams) {
+      maxX = Math.ceil(targetParams.targetDistance * 1.2);
+      maxY = Math.ceil(targetParams.enemyHeight * 1.5);
+      
+      // Ajustar escala para valores muy grandes
+      if (maxY > 1000) {
+        maxY = Math.ceil(maxY / 1000) * 1000;
+      } else if (maxY > 100) {
+        maxY = Math.ceil(maxY / 100) * 100;
+      } else {
+        maxY = Math.ceil(maxY / 10) * 10;
+      }
+      
+      if (maxX > 1000) {
+        maxX = Math.ceil(maxX / 1000) * 1000;
+      } else if (maxX > 100) {
+        maxX = Math.ceil(maxX / 100) * 100;
+      } else {
+        maxX = Math.ceil(maxX / 10) * 10;
+      }
+      
+      maxX = Math.max(maxX, 50);
+      maxY = Math.max(maxY, 50);
+    }
     
     const scaleX = (x: number) => padding + (x / maxX) * graphWidth;
     const scaleY = (y: number) => canvas.height - padding - (y / maxY) * graphHeight;
     
+    const defensorX = scaleX(defensorPosition);
+    
+    // Dibujar la base del lanzador
+    ctx.beginPath();
+    ctx.arc(defensorX, scaleY(0), 10, 0, Math.PI * 2);
+    ctx.fillStyle = '#7f8c8d';
+    ctx.fill();
+    
+    // Cañón en posición horizontal (indicando que aún no se ha configurado)
+    ctx.save();
+    ctx.translate(defensorX, scaleY(0));
+    ctx.fillStyle = '#34495e';
+    ctx.fillRect(0, -3, 20, 6);
+    ctx.restore();
+    
+
+    
+    // Mensaje para indicar el siguiente paso
+    ctx.font = '14px Arial';
+    ctx.fillStyle = '#e74c3c';
+    ctx.textAlign = 'center';
+    ctx.fillText('Ahora configure la velocidad y ángulo del misil defensor', canvas.width / 2, 25);
+  };
+  
+  // Función para mostrar instrucciones cuando no hay datos
+  const drawInstructions = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
+    ctx.font = '16px Arial';
+    ctx.fillStyle = '#555';
+    ctx.textAlign = 'center';
+    ctx.fillText('Complete el formulario con la distancia y altura', canvas.width / 2, canvas.height / 2 - 30);
+    ctx.fillText('y presione "Mostrar en el plano"', canvas.width / 2, canvas.height / 2);
+    
+    ctx.font = '14px Arial';
+    ctx.fillStyle = '#e74c3c';
+    ctx.fillText('Ingrese la distancia de la ciudad y la altura del misil enemigo', canvas.width / 2, canvas.height / 2 + 60);
+  };
+  
+  // Función para dibujar una ciudad simple
+  const drawCity = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, positionX: number, 
+                    scaleX: (x: number) => number, scaleY: (y: number) => number) => {
     const x = scaleX(positionX);
     const y = scaleY(0);
     
@@ -266,26 +395,12 @@ function App() {
       }
     }
     
-    // Etiqueta "CIUDAD"
-    ctx.font = '10px Arial';
-    ctx.fillStyle = '#333';
-    ctx.textAlign = 'center';
-    ctx.fillText('CIUDAD', x, y + 10);
   };
   
   // Función para dibujar un misil enemigo
-  const drawEnemyMissile = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, positionX: number, positionY: number) => {
-    const padding = 40;
-    const graphWidth = canvas.width - 2 * padding;
-    const graphHeight = canvas.height - 2 * padding;
-    
-    // Factores de conversión para ajustar a la escala del canvas
-    const maxX = 100; // 100 metros horizontales
-    const maxY = 100; // 100 metros verticales
-    
-    const scaleX = (x: number) => padding + (x / maxX) * graphWidth;
-    const scaleY = (y: number) => canvas.height - padding - (y / maxY) * graphHeight;
-    
+  const drawEnemyMissile = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, 
+                          positionX: number, positionY: number,
+                          scaleX: (x: number) => number, scaleY: (y: number) => number) => {
     const x = scaleX(positionX);
     const y = scaleY(positionY);
     
@@ -338,43 +453,25 @@ function App() {
     ctx.beginPath();
     ctx.setLineDash([3, 3]); // Línea punteada
     ctx.moveTo(x, y);
-    ctx.lineTo(scaleX(positionX), scaleY(0)); // Línea hacia la base (ciudad)
+    ctx.lineTo(x, scaleY(0)); // Línea hacia la base (ciudad)
     ctx.strokeStyle = '#c0392b';
     ctx.lineWidth = 1.5;
     ctx.stroke();
     ctx.setLineDash([]); // Restaurar línea normal
     
-    // Etiqueta "MISIL ENEMIGO"
-    ctx.font = '10px Arial';
-    ctx.fillStyle = '#c0392b';
-    ctx.textAlign = 'center';
-    ctx.fillText('MISIL ENEMIGO', x, y - 24);
-    
-    // Coordenadas del misil
-    ctx.fillText(`(${positionX}, ${positionY})`, x, y - 12);
   };
   
   // Función para dibujar una trayectoria parabólica simple
-  const drawSimpleTrajectory = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, params: FormData) => {
-    const padding = 40;
-    const graphWidth = canvas.width - 2 * padding;
-    const graphHeight = canvas.height - 2 * padding;
-    
+  const drawSimpleTrajectory = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, 
+                               params: FormData, 
+                               scaleX: (x: number) => number, scaleY: (y: number) => number,
+                               maxX: number, maxY: number) => {
     const { defensorAngle, defensorInitialSpeed, targetDistance, enemyHeight, defensorPosition } = params;
-    
-    // Factores de conversión para ajustar a la escala del canvas
-    const maxX = 100; // 100 metros horizontales
-    const maxY = 100; // 100 metros verticales
-    
-    const scaleX = (x: number) => padding + (x / maxX) * graphWidth;
-    const scaleY = (y: number) => canvas.height - padding - (y / maxY) * graphHeight;
-    
-    // Coordenadas del punto actual cuando se mueve el ratón sobre el canvas
-    let currentX = 0;
-    let currentY = 0;
     
     // Dibujar la base del lanzador
     const defensorX = scaleX(defensorPosition);
+    
+    // Dibujar la base del lanzador
     ctx.beginPath();
     ctx.arc(defensorX, scaleY(0), 10, 0, Math.PI * 2);
     ctx.fillStyle = '#7f8c8d';
@@ -391,17 +488,12 @@ function App() {
     ctx.fillRect(0, -3, cannonLength, 6);
     ctx.restore();
     
-    // Texto para el cañón defensor
-    ctx.font = '10px Arial';
-    ctx.fillStyle = '#333';
-    ctx.textAlign = 'center';
-    ctx.fillText('DEFENSOR', defensorX, scaleY(0) + 20);
     
     // Usar posición real del defensor para iniciar la trayectoria
     const startX = defensorX + cannonLength * Math.cos(angleRad);
     const startY = scaleY(0) - cannonLength * Math.sin(angleRad);
     
-    // Dibujar la trayectoria parabólica simplificada
+    // Dibujar la trayectoria parabólica
     ctx.beginPath();
     
     // Usando ecuaciones de movimiento parabólico para generar puntos
@@ -432,8 +524,8 @@ function App() {
       const x = defensorPosition + v0x * t;
       const y = v0y * t - 0.5 * g * t * t;
       
-      // Si ya cayó al suelo, terminamos
-      if (y < 0) break;
+      // Si ya cayó al suelo o se salió del gráfico, terminamos
+      if (y < 0 || x > maxX) break;
       
       trajectoryPoints.push({ x, y });
       ctx.lineTo(scaleX(x), scaleY(y));
@@ -448,38 +540,102 @@ function App() {
     const xMax = defensorPosition + v0x * tMax;
     const yMax = v0y * tMax - 0.5 * g * tMax * tMax;
     
-    // Dibujar punto de altura máxima
-    ctx.beginPath();
-    ctx.arc(scaleX(xMax), scaleY(yMax), 5, 0, Math.PI * 2);
-    ctx.fillStyle = '#f39c12';
-    ctx.fill();
+    // Verificar si el punto máximo está dentro del rango visible
+    if (xMax <= maxX && yMax <= maxY) {
+      // Dibujar punto de altura máxima
+      ctx.beginPath();
+      ctx.arc(scaleX(xMax), scaleY(yMax), 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#f39c12';
+      ctx.fill();
+      
+      // Etiqueta del punto de altura máxima
+      ctx.font = '12px Arial';
+      ctx.fillStyle = '#333';
+      ctx.textAlign = 'center';
+      ctx.fillText(`(${xMax.toFixed(1)}, ${yMax.toFixed(1)})`, scaleX(xMax), scaleY(yMax) - 10);
+    }
     
-    // Etiqueta del punto de altura máxima
-    ctx.font = '12px Arial';
-    ctx.fillStyle = '#333';
-    ctx.textAlign = 'center';
-    ctx.fillText(`(${xMax.toFixed(1)}, ${yMax.toFixed(1)})`, scaleX(xMax), scaleY(yMax) - 10);
-    
-    // Punto de impacto
+    // Punto de impacto (cuando y=0)
     const tImpact = totalTime;
     const xImpact = defensorPosition + v0x * tImpact;
     
-    // Dibujar punto de impacto
-    ctx.beginPath();
-    ctx.arc(scaleX(xImpact), scaleY(0), 5, 0, Math.PI * 2);
-    ctx.fillStyle = '#3498db';
-    ctx.fill();
-    
-    // Etiqueta del punto de impacto
-    ctx.fillText(`(${xImpact.toFixed(1)}, 0)`, scaleX(xImpact), scaleY(0) - 10);
+    // Verificar si el punto de impacto está dentro del rango visible
+    if (xImpact <= maxX) {
+      // Dibujar punto de impacto
+      ctx.beginPath();
+      ctx.arc(scaleX(xImpact), scaleY(0), 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#3498db';
+      ctx.fill();
+      
+      // Etiqueta del punto de impacto
+      ctx.fillText(`(${xImpact.toFixed(1)}, 0)`, scaleX(xImpact), scaleY(0) - 10);
+    }
     
     // Agregar información de la trayectoria
     ctx.font = '14px Arial';
     ctx.fillStyle = '#333';
     ctx.textAlign = 'left';
+    const padding = 40;
     ctx.fillText(`Alcance: ${xImpact.toFixed(2)} m`, padding + 20, padding + 20);
     ctx.fillText(`Altura máxima: ${yMax.toFixed(2)} m`, padding + 20, padding + 45);
     ctx.fillText(`Tiempo de vuelo: ${totalTime.toFixed(2)} s`, padding + 20, padding + 70);
+    
+    // Verificar si el misil defensor puede alcanzar al misil enemigo
+    const targetX = targetDistance;
+    const targetY = enemyHeight;
+    
+    // Calcular la posición del misil defensor en el momento en que x = targetX
+    // Resolviendo para t: targetX = defensorPosition + v0x * t
+    const tAtTargetX = (targetX - defensorPosition) / v0x;
+    
+    // Si el tiempo es negativo o mayor que el tiempo de vuelo, no puede alcanzarlo
+    if (tAtTargetX >= 0 && tAtTargetX <= totalTime) {
+      // Calcular la altura del misil defensor en ese momento
+      const yAtTargetX = v0y * tAtTargetX - 0.5 * g * tAtTargetX * tAtTargetX;
+      
+      // Dibujar línea de intercepción
+      if (Math.abs(yAtTargetX - targetY) < 5) { // Si está a menos de 5 metros
+        ctx.beginPath();
+        ctx.moveTo(scaleX(targetX), scaleY(targetY));
+        ctx.lineTo(scaleX(targetX), scaleY(yAtTargetX));
+        ctx.strokeStyle = '#e74c3c';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Dibujar punto de intercepción
+        ctx.beginPath();
+        ctx.arc(scaleX(targetX), scaleY(yAtTargetX), 7, 0, Math.PI * 2);
+        ctx.fillStyle = '#e74c3c';
+        ctx.fill();
+        
+        // Mensaje de intercepción
+        ctx.fillStyle = '#e74c3c';
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('¡INTERCEPCIÓN!', scaleX(targetX), scaleY(yAtTargetX) - 20);
+        
+        ctx.font = '12px Arial';
+        ctx.fillText(`t = ${tAtTargetX.toFixed(2)} s`, scaleX(targetX), scaleY(yAtTargetX) - 35);
+        
+        // Agregar mensaje a la información
+        ctx.font = 'bold 14px Arial';
+        ctx.fillStyle = '#e74c3c';
+        ctx.textAlign = 'left';
+        ctx.fillText(`¡Éxito! El misil defensor intercepta al enemigo en t=${tAtTargetX.toFixed(2)}s`, padding + 20, padding + 95);
+      } else {
+        // Mensaje de fallo
+        ctx.font = '14px Arial';
+        ctx.fillStyle = '#e74c3c';
+        ctx.textAlign = 'left';
+        ctx.fillText(`No hay intercepción. Diferencia de altura: ${Math.abs(yAtTargetX - targetY).toFixed(2)} m`, padding + 20, padding + 95);
+      }
+    } else {
+      // Mensaje de que no puede alcanzarlo
+      ctx.font = '14px Arial';
+      ctx.fillStyle = '#e74c3c';
+      ctx.textAlign = 'left';
+      ctx.fillText('No hay intercepción. El misil defensor no alcanza la posición objetivo.', padding + 20, padding + 95);
+    }
   };
 
   return (
@@ -488,7 +644,7 @@ function App() {
         <h1>Simulador de Trayectoria Parabólica</h1>
       </header>
       <main>
-        <InputForm onSubmit={handleFormSubmit} />
+        <InputForm onSubmit={handleFormSubmit} onShowTarget={handleShowTarget} />
         
         <div className="results-container">
           <h2>Simulación de Trayectoria</h2>
@@ -502,6 +658,7 @@ function App() {
             />
           </div>
           
+         
         </div>
       </main>
     </div>
