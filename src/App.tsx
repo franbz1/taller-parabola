@@ -3,6 +3,7 @@ import './App.css'
 import InputForm from './components/InputForm'
 import { FormData, TargetData } from './components/InputForm'
 import { calculateEnemyMissileTrajectory } from './lib/parabolicMotion'
+import { SoundEffects } from './lib/soundEffects'
 
 function App() {
   // Estado completo del formulario
@@ -18,12 +19,17 @@ function App() {
   const [enemyMissileProgress, setEnemyMissileProgress] = useState(0);
   const [enemyTrajectory, setEnemyTrajectory] = useState<{x: number, y: number}[]>([]);
   
+  // Estado para controlar la explosión del misil enemigo
+  const [showExplosion, setShowExplosion] = useState(false);
+  const [explosionSize, setExplosionSize] = useState(0);
+  
   // Estado para controlar la animación de la trayectoria parabólica del defensor
   const [defensorMissileProgress, setDefensorMissileProgress] = useState(0);
   const [trajectoryPoints, setTrajectoryPoints] = useState<{x: number, y: number}[]>([]);
   
   const animationFrameRef = useRef<number | null>(null);
   const defensorAnimationFrameRef = useRef<number | null>(null);
+  const explosionAnimationFrameRef = useRef<number | null>(null);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
@@ -32,6 +38,11 @@ function App() {
     console.log('Datos del objetivo:', data);
     setTargetParams(data);
     setShowTrajectory(false); // Asegurarnos de no mostrar trayectoria aún
+    setShowExplosion(false); // Resetear la explosión
+    setExplosionSize(0);
+    
+    // Inicializar el contexto de audio (requiere interacción de usuario)
+    SoundEffects.initialize();
   };
   
   // Manejador para la segunda etapa: simular trayectoria
@@ -39,6 +50,11 @@ function App() {
     console.log('Datos completos:', data);
     setFormParams(data);
     setShowTrajectory(true); // Ahora sí mostrar la trayectoria
+    setShowExplosion(false); // Resetear la explosión
+    setExplosionSize(0);
+    
+    // Inicializar el contexto de audio (requiere interacción de usuario)
+    SoundEffects.initialize();
     
     // Iniciar la animación del misil enemigo
     if (targetParams) {
@@ -138,6 +154,14 @@ function App() {
       cancelAnimationFrame(animationFrameRef.current);
     }
     
+    // Detener cualquier animación de explosión previa
+    if (explosionAnimationFrameRef.current !== null) {
+      cancelAnimationFrame(explosionAnimationFrameRef.current);
+    }
+    
+    setShowExplosion(false);
+    setExplosionSize(0);
+    
     const startTime = performance.now();
     // Duración de la animación en milisegundos (ajustar según necesidad)
     const animationDuration = 3000;
@@ -152,10 +176,58 @@ function App() {
         animationFrameRef.current = requestAnimationFrame(animate);
       } else {
         animationFrameRef.current = null;
+        // Al finalizar la animación del misil, iniciar la animación de explosión
+        setShowExplosion(true);
+        startExplosionAnimation();
       }
     };
     
     animationFrameRef.current = requestAnimationFrame(animate);
+  };
+  
+  // Función para iniciar la animación de la explosión
+  const startExplosionAnimation = () => {
+    // Detener cualquier animación de explosión previa
+    if (explosionAnimationFrameRef.current !== null) {
+      cancelAnimationFrame(explosionAnimationFrameRef.current);
+    }
+    
+    // Reproducir sonido de explosión
+    SoundEffects.playExplosionSound();
+    
+    const startTime = performance.now();
+    // Duración de la animación de explosión en milisegundos
+    const animationDuration = 1500;
+    const maxExplosionSize = 50; // Tamaño máximo de la explosión
+    
+    const animate = (currentTime: number) => {
+      const elapsedTime = currentTime - startTime;
+      const progress = Math.min(elapsedTime / animationDuration, 1);
+      
+      // Tamaño de la explosión basado en la curva - crece rápido y luego se mantiene
+      let sizeProgress;
+      if (progress < 0.3) {
+        // Crecimiento rápido inicial (0-30% del tiempo)
+        sizeProgress = progress / 0.3;
+      } else if (progress < 0.8) {
+        // Mantener tamaño máximo (30-80% del tiempo)
+        sizeProgress = 1;
+      } else {
+        // Desvanecimiento (80-100% del tiempo)
+        sizeProgress = 1 - ((progress - 0.8) / 0.2);
+      }
+      
+      setExplosionSize(sizeProgress * maxExplosionSize);
+      
+      if (progress < 1) {
+        explosionAnimationFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        explosionAnimationFrameRef.current = null;
+        setShowExplosion(false);
+      }
+    };
+    
+    explosionAnimationFrameRef.current = requestAnimationFrame(animate);
   };
   
   // Cancelar cualquier animación al desmontar
@@ -166,6 +238,9 @@ function App() {
       }
       if (defensorAnimationFrameRef.current !== null) {
         cancelAnimationFrame(defensorAnimationFrameRef.current);
+      }
+      if (explosionAnimationFrameRef.current !== null) {
+        cancelAnimationFrame(explosionAnimationFrameRef.current);
       }
     };
   }, []);
@@ -481,36 +556,44 @@ function App() {
   // Función para dibujar una ciudad simple
   const drawCity = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, positionX: number, 
                     scaleX: (x: number) => number, scaleY: (y: number) => number) => {
-    const x = scaleX(positionX);
+    const cityX = scaleX(positionX);
     const y = scaleY(0);
     
-    // Dibujar edificios
-    const cityWidth = 30;
-    const cityX = x - cityWidth/2;
+    // Si hay explosión, dibujar la ciudad destruida
+    if (showExplosion && showTrajectory) {
+      drawDestroyedCity(ctx, cityX, y);
+      return;
+    }
     
-    // Edificio 1 (alto)
+    // Base de la ciudad
     ctx.beginPath();
-    ctx.rect(cityX, y - 25, 10, 25);
+    ctx.rect(cityX - 20, y - 10, 60, 10);
     ctx.fillStyle = '#34495e';
     ctx.fill();
     
-    // Edificio 2 (mediano)
+    // Edificio 1 (izquierdo)
     ctx.beginPath();
-    ctx.rect(cityX + 11, y - 18, 8, 18);
-    ctx.fillStyle = '#2c3e50';
+    ctx.rect(cityX - 18, y - 25, 12, 15);
+    ctx.fillStyle = '#7f8c8d';
     ctx.fill();
     
-    // Edificio 3 (pequeño)
+    // Edificio 2 (central y más alto)
     ctx.beginPath();
-    ctx.rect(cityX + 20, y - 15, 10, 15);
-    ctx.fillStyle = '#34495e';
+    ctx.rect(cityX - 1, y - 35, 14, 25);
+    ctx.fillStyle = '#7f8c8d';
+    ctx.fill();
+    
+    // Edificio 3 (derecho)
+    ctx.beginPath();
+    ctx.rect(cityX + 17, y - 20, 12, 10);
+    ctx.fillStyle = '#7f8c8d';
     ctx.fill();
     
     // Ventanas (edificio 1)
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 2; i++) {
       for (let j = 0; j < 2; j++) {
         ctx.beginPath();
-        ctx.rect(cityX + 2 + j * 4, y - 23 + i * 7, 2, 3);
+        ctx.rect(cityX - 15 + j * 5, y - 22 + i * 7, 2, 3);
         ctx.fillStyle = '#f1c40f';
         ctx.fill();
       }
@@ -538,6 +621,111 @@ function App() {
     
   };
   
+  // Función para dibujar la ciudad destruida
+  const drawDestroyedCity = (ctx: CanvasRenderingContext2D, cityX: number, y: number) => {
+    // Base de la ciudad (ahora con grietas)
+    ctx.beginPath();
+    ctx.rect(cityX - 20, y - 8, 60, 8);
+    ctx.fillStyle = '#2c3e50';
+    ctx.fill();
+    
+    // Dibujar grietas en la base
+    ctx.beginPath();
+    ctx.moveTo(cityX - 10, y - 8);
+    ctx.lineTo(cityX - 5, y - 4);
+    ctx.lineTo(cityX, y - 8);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(cityX + 15, y - 8);
+    ctx.lineTo(cityX + 10, y - 3);
+    ctx.lineTo(cityX + 5, y - 8);
+    ctx.stroke();
+    
+    // Edificio 1 (izquierdo) - parcialmente destruido
+    ctx.beginPath();
+    ctx.rect(cityX - 18, y - 15, 12, 7); // Reducido en altura
+    ctx.fillStyle = '#626567';
+    ctx.fill();
+    
+    // Escombros del edificio 1
+    ctx.beginPath();
+    ctx.moveTo(cityX - 18, y - 15);
+    ctx.lineTo(cityX - 22, y - 10);
+    ctx.lineTo(cityX - 14, y - 10);
+    ctx.closePath();
+    ctx.fillStyle = '#7f8c8d';
+    ctx.fill();
+    
+    // Edificio 2 (central) - severamente dañado
+    ctx.beginPath();
+    ctx.rect(cityX - 1, y - 20, 14, 12); // Muy reducido en altura
+    ctx.fillStyle = '#626567';
+    ctx.fill();
+    
+    // Parte superior destruida del edificio 2
+    ctx.beginPath();
+    ctx.moveTo(cityX - 1, y - 20);
+    ctx.lineTo(cityX + 3, y - 25);
+    ctx.lineTo(cityX + 7, y - 20);
+    ctx.closePath();
+    ctx.fillStyle = '#7f8c8d';
+    ctx.fill();
+    
+    // Escombros cayendo del edificio 2
+    for (let i = 0; i < 5; i++) {
+      const offsetX = Math.sin(i * 2) * 5;
+      const offsetY = Math.random() * -10;
+      ctx.fillRect(cityX + offsetX, y + offsetY, 3, 3);
+    }
+    
+    // Edificio 3 (derecho) - completamente destruido (solo escombros)
+    ctx.beginPath();
+    ctx.moveTo(cityX + 17, y - 8);
+    ctx.lineTo(cityX + 23, y - 12);
+    ctx.lineTo(cityX + 29, y - 8);
+    ctx.closePath();
+    ctx.fillStyle = '#7f8c8d';
+    ctx.fill();
+    
+    // Humo sobre los edificios
+    const gradient = ctx.createRadialGradient(
+      cityX, y - 30, 5,
+      cityX, y - 30, 20
+    );
+    gradient.addColorStop(0, 'rgba(100, 100, 100, 0.9)');
+    gradient.addColorStop(1, 'rgba(100, 100, 100, 0)');
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(cityX, y - 30, 20, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Fuego en algunos puntos
+    const firePositions = [
+      { x: cityX - 15, y: y - 12, size: 5 },
+      { x: cityX + 5, y: y - 18, size: 7 },
+      { x: cityX + 20, y: y - 10, size: 6 }
+    ];
+    
+    for (const pos of firePositions) {
+      const fireGradient = ctx.createRadialGradient(
+        pos.x, pos.y, 0,
+        pos.x, pos.y, pos.size
+      );
+      fireGradient.addColorStop(0, 'rgba(255, 150, 0, 0.9)');
+      fireGradient.addColorStop(0.5, 'rgba(255, 50, 0, 0.7)');
+      fireGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+      
+      ctx.fillStyle = fireGradient;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, pos.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+  
   // Función para dibujar un misil enemigo
   const drawEnemyMissile = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, 
                           positionX: number, positionY: number,
@@ -562,6 +750,12 @@ function App() {
     
     const x = scaleX(positionX);
     const y = scaleY(positionY);
+    
+    // Si hay que mostrar la explosión, dibujarla en lugar del misil
+    if (showExplosion && showTrajectory) {
+      drawExplosion(ctx, x, y);
+      return; // No dibujar el misil si hay explosión
+    }
     
     // ===== MISIL ENEMIGO QUE APUNTA DIRECTAMENTE HACIA ABAJO =====
     
@@ -636,6 +830,68 @@ function App() {
       ctx.stroke();
       ctx.setLineDash([]); // Restaurar línea normal
     }
+  };
+  
+  // Función para dibujar la explosión
+  const drawExplosion = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
+    const size = explosionSize;
+    
+    // Círculo central de la explosión (amarillo brillante)
+    ctx.beginPath();
+    ctx.arc(x, y, size * 0.4, 0, Math.PI * 2);
+    ctx.fillStyle = '#FFFF00';
+    ctx.fill();
+    
+    // Círculo medio de la explosión (naranja)
+    ctx.beginPath();
+    ctx.arc(x, y, size * 0.6, 0, Math.PI * 2);
+    ctx.fillStyle = '#FF9500';
+    ctx.globalAlpha = 0.8;
+    ctx.fill();
+    
+    // Círculo exterior de la explosión (rojo)
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.fillStyle = '#FF5500';
+    ctx.globalAlpha = 0.6;
+    ctx.fill();
+    
+    // Restablecer transparencia
+    ctx.globalAlpha = 1;
+    
+    // Dibujar destellos/rayos de la explosión
+    const numRays = 12;
+    const rayLength = size * 1.2;
+    
+    ctx.strokeStyle = '#FFFF00';
+    ctx.lineWidth = 2;
+    
+    for (let i = 0; i < numRays; i++) {
+      const angle = (Math.PI * 2 * i) / numRays;
+      const rayStartX = x + (size * 0.4) * Math.cos(angle);
+      const rayStartY = y + (size * 0.4) * Math.sin(angle);
+      const rayEndX = x + rayLength * Math.cos(angle);
+      const rayEndY = y + rayLength * Math.sin(angle);
+      
+      ctx.beginPath();
+      ctx.moveTo(rayStartX, rayStartY);
+      ctx.lineTo(rayEndX, rayEndY);
+      ctx.stroke();
+    }
+    
+    // Ondas de choque (círculos concéntricos)
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 1.5;
+    
+    for (let i = 1; i <= 3; i++) {
+      ctx.beginPath();
+      ctx.arc(x, y, size * 0.8 * i, 0, Math.PI * 2);
+      ctx.globalAlpha = 0.3 / i;
+      ctx.stroke();
+    }
+    
+    // Restablecer transparencia
+    ctx.globalAlpha = 1;
   };
   
   // Función para dibujar una trayectoria parabólica simple
