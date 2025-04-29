@@ -17,7 +17,13 @@ function App() {
   // Estado para controlar la animación del misil enemigo
   const [enemyMissileProgress, setEnemyMissileProgress] = useState(0);
   const [enemyTrajectory, setEnemyTrajectory] = useState<{x: number, y: number}[]>([]);
+  
+  // Estado para controlar la animación de la trayectoria parabólica del defensor
+  const [defensorMissileProgress, setDefensorMissileProgress] = useState(0);
+  const [trajectoryPoints, setTrajectoryPoints] = useState<{x: number, y: number}[]>([]);
+  
   const animationFrameRef = useRef<number | null>(null);
+  const defensorAnimationFrameRef = useRef<number | null>(null);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
@@ -47,8 +53,82 @@ function App() {
       
       setEnemyTrajectory(trajectory);
       setEnemyMissileProgress(0);
+      
+      // Calcular los puntos de la trayectoria parabólica del defensor
+      const points = calculateDefensorTrajectory(data);
+      setTrajectoryPoints(points);
+      setDefensorMissileProgress(0);
+      
+      // Iniciar ambas animaciones
       startEnemyMissileAnimation();
+      startDefensorMissileAnimation(data.defensorInitialSpeed);
     }
+  };
+
+  // Función para calcular los puntos de la trayectoria del defensor
+  const calculateDefensorTrajectory = (params: FormData): {x: number, y: number}[] => {
+    const { defensorAngle, defensorInitialSpeed } = params;
+    const defensorPosition = 0;
+    
+    // Calcular parámetros físicos
+    const g = 9.8; // Gravedad
+    const v0 = defensorInitialSpeed;
+    const theta = defensorAngle * Math.PI / 180;
+    
+    // Componentes de la velocidad inicial
+    const v0x = v0 * Math.cos(theta);
+    const v0y = v0 * Math.sin(theta);
+    
+    // Tiempo de vuelo
+    const totalTime = (2 * v0y) / g;
+    
+    // Crear array para almacenar todos los puntos de la trayectoria
+    const points: {x: number, y: number}[] = [];
+    
+    // Generar puntos de la trayectoria
+    const steps = 100;
+    for (let i = 0; i <= steps; i++) {
+      const t = (i / steps) * totalTime;
+      
+      // Posición en cada instante
+      const x = defensorPosition + v0x * t;
+      const y = v0y * t - 0.5 * g * t * t;
+      
+      // Si ya cayó al suelo, terminamos
+      if (y < 0) break;
+      
+      points.push({ x, y });
+    }
+    
+    return points;
+  };
+
+  // Función para iniciar la animación del misil defensor
+  const startDefensorMissileAnimation = (initialSpeed: number) => {
+    // Detener cualquier animación previa
+    if (defensorAnimationFrameRef.current !== null) {
+      cancelAnimationFrame(defensorAnimationFrameRef.current);
+    }
+    
+    const startTime = performance.now();
+    // Duración de la animación en milisegundos - ajustada según la velocidad
+    // A mayor velocidad, menor duración para mantener sensación de rapidez
+    const animationDuration = Math.max(3000, 6000 - initialSpeed * 50);
+    
+    const animate = (currentTime: number) => {
+      const elapsedTime = currentTime - startTime;
+      const progress = Math.min(elapsedTime / animationDuration, 1);
+      
+      setDefensorMissileProgress(progress);
+      
+      if (progress < 1) {
+        defensorAnimationFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        defensorAnimationFrameRef.current = null;
+      }
+    };
+    
+    defensorAnimationFrameRef.current = requestAnimationFrame(animate);
   };
 
   // Función para iniciar la animación del misil enemigo
@@ -83,6 +163,9 @@ function App() {
     return () => {
       if (animationFrameRef.current !== null) {
         cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (defensorAnimationFrameRef.current !== null) {
+        cancelAnimationFrame(defensorAnimationFrameRef.current);
       }
     };
   }, []);
@@ -121,7 +204,7 @@ function App() {
       // Si no hay parámetros, mostrar mensaje de instrucciones
       drawInstructions(ctx, canvas);
     }
-  }, [targetParams, formParams, showTrajectory, enemyMissileProgress]);
+  }, [targetParams, formParams, showTrajectory, enemyMissileProgress, defensorMissileProgress]);
   
   // Función para dibujar el sistema de coordenadas
   const drawCoordinateSystem = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
@@ -588,9 +671,6 @@ function App() {
     const startX = defensorX + cannonLength * Math.cos(angleRad);
     const startY = defensorY - cannonLength * Math.sin(angleRad);
     
-    // Dibujar la trayectoria parabólica
-    ctx.beginPath();
-    
     // Usando ecuaciones de movimiento parabólico para generar puntos
     const g = 9.8; // Gravedad
     const v0 = defensorInitialSpeed;
@@ -603,133 +683,135 @@ function App() {
     // Tiempo de vuelo
     const totalTime = (2 * v0y) / g;
     
-    // Crear array para almacenar todos los puntos de la trayectoria
-    const trajectoryPoints = [];
+    // Dibujar la trayectoria parabólica ANIMADA
+    const currentPoints = trajectoryPoints.slice(0, Math.ceil(trajectoryPoints.length * defensorMissileProgress));
     
-    // Dibujamos la curva
-    ctx.beginPath();
-    ctx.moveTo(startX, startY);
-    
-    // Generar puntos de la trayectoria
-    const steps = 50;
-    for (let i = 0; i <= steps; i++) {
-      const t = (i / steps) * totalTime;
-      
-      // Posición en cada instante
-      const x = defensorPosition + v0x * t;
-      const y = v0y * t - 0.5 * g * t * t;
-      
-      // Si ya cayó al suelo o se salió del gráfico, terminamos
-      if (y < 0 || x > maxX) break;
-      
-      trajectoryPoints.push({ x, y });
-      ctx.lineTo(scaleX(x), scaleY(y));
-    }
-    
-    ctx.strokeStyle = '#27ae60'; // Verde para el misil defensor
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    
-    // Punto de altura máxima
-    const tMax = v0y / g;
-    const xMax = defensorPosition + v0x * tMax;
-    const yMax = v0y * tMax - 0.5 * g * tMax * tMax;
-    
-    // Verificar si el punto máximo está dentro del rango visible
-    if (xMax <= maxX && yMax <= maxY) {
-      // Dibujar punto de altura máxima
+    if (currentPoints.length > 1) {
+      // Dibujamos la curva con los puntos actuales
       ctx.beginPath();
-      ctx.arc(scaleX(xMax), scaleY(yMax), 5, 0, Math.PI * 2);
-      ctx.fillStyle = '#f39c12';
-      ctx.fill();
+      ctx.moveTo(scaleX(currentPoints[0].x), scaleY(currentPoints[0].y));
       
-      // Etiqueta del punto de altura máxima
-      ctx.font = '12px Arial';
-      ctx.fillStyle = '#333';
-      ctx.textAlign = 'center';
-      ctx.fillText(`(${xMax.toFixed(1)}, ${yMax.toFixed(1)})`, scaleX(xMax), scaleY(yMax) - 10);
-    }
-    
-    // Punto de impacto (cuando y=0)
-    const tImpact = totalTime;
-    const xImpact = defensorPosition + v0x * tImpact;
-    
-    // Verificar si el punto de impacto está dentro del rango visible
-    if (xImpact <= maxX) {
-      // Dibujar punto de impacto
-      ctx.beginPath();
-      ctx.arc(scaleX(xImpact), scaleY(0), 5, 0, Math.PI * 2);
-      ctx.fillStyle = '#3498db';
-      ctx.fill();
+      for (let i = 1; i < currentPoints.length; i++) {
+        ctx.lineTo(scaleX(currentPoints[i].x), scaleY(currentPoints[i].y));
+      }
       
-      // Etiqueta del punto de impacto
-      ctx.fillText(`(${xImpact.toFixed(1)}, 0)`, scaleX(xImpact), scaleY(0) - 10);
-    }
-    
-    // Agregar información de la trayectoria
-    ctx.font = '14px Arial';
-    ctx.fillStyle = '#333';
-    ctx.textAlign = 'left';
-    const padding = 40;
-    ctx.fillText(`Alcance: ${xImpact.toFixed(2)} m`, padding + 20, padding + 20);
-    ctx.fillText(`Altura máxima: ${yMax.toFixed(2)} m`, padding + 20, padding + 45);
-    ctx.fillText(`Tiempo de vuelo: ${totalTime.toFixed(2)} s`, padding + 20, padding + 70);
-    
-    // Verificar si el misil defensor puede alcanzar al misil enemigo
-    const targetX = targetDistance;
-    const targetY = enemyHeight;
-    
-    // Calcular la posición del misil defensor en el momento en que x = targetX
-    // Resolviendo para t: targetX = defensorPosition + v0x * t
-    const tAtTargetX = (targetX - defensorPosition) / v0x;
-    
-    // Si el tiempo es negativo o mayor que el tiempo de vuelo, no puede alcanzarlo
-    if (tAtTargetX >= 0 && tAtTargetX <= totalTime) {
-      // Calcular la altura del misil defensor en ese momento
-      const yAtTargetX = v0y * tAtTargetX - 0.5 * g * tAtTargetX * tAtTargetX;
+      ctx.strokeStyle = '#27ae60'; // Verde para el misil defensor
+      ctx.lineWidth = 3;
+      ctx.stroke();
       
-      // Dibujar línea de intercepción
-      if (Math.abs(yAtTargetX - targetY) < 5) { // Si está a menos de 5 metros
+      // Dibujar el proyectil en la posición actual
+      if (currentPoints.length > 0) {
+        const currentPosition = currentPoints[currentPoints.length - 1];
         ctx.beginPath();
-        ctx.moveTo(scaleX(targetX), scaleY(targetY));
-        ctx.lineTo(scaleX(targetX), scaleY(yAtTargetX));
-        ctx.strokeStyle = '#e74c3c';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        
-        // Dibujar punto de intercepción
-        ctx.beginPath();
-        ctx.arc(scaleX(targetX), scaleY(yAtTargetX), 7, 0, Math.PI * 2);
+        ctx.arc(scaleX(currentPosition.x), scaleY(currentPosition.y), 7, 0, Math.PI * 2);
         ctx.fillStyle = '#e74c3c';
         ctx.fill();
+      }
+    }
+    
+    // Solo mostrar información completa cuando la animación termina
+    if (defensorMissileProgress >= 0.99) {
+      // Punto de altura máxima
+      const tMax = v0y / g;
+      const xMax = defensorPosition + v0x * tMax;
+      const yMax = v0y * tMax - 0.5 * g * tMax * tMax;
+      
+      // Verificar si el punto máximo está dentro del rango visible
+      if (xMax <= maxX && yMax <= maxY) {
+        // Dibujar punto de altura máxima
+        ctx.beginPath();
+        ctx.arc(scaleX(xMax), scaleY(yMax), 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#f39c12';
+        ctx.fill();
         
-        // Mensaje de intercepción
-        ctx.fillStyle = '#e74c3c';
-        ctx.font = 'bold 14px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('¡INTERCEPCIÓN!', scaleX(targetX), scaleY(yAtTargetX) - 20);
-        
+        // Etiqueta del punto de altura máxima
         ctx.font = '12px Arial';
-        ctx.fillText(`t = ${tAtTargetX.toFixed(2)} s`, scaleX(targetX), scaleY(yAtTargetX) - 35);
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'center';
+        ctx.fillText(`(${xMax.toFixed(1)}, ${yMax.toFixed(1)})`, scaleX(xMax), scaleY(yMax) - 10);
+      }
+      
+      // Punto de impacto (cuando y=0)
+      const tImpact = totalTime;
+      const xImpact = defensorPosition + v0x * tImpact;
+      
+      // Verificar si el punto de impacto está dentro del rango visible
+      if (xImpact <= maxX) {
+        // Dibujar punto de impacto
+        ctx.beginPath();
+        ctx.arc(scaleX(xImpact), scaleY(0), 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#3498db';
+        ctx.fill();
         
-        // Agregar mensaje a la información
-        ctx.font = 'bold 14px Arial';
-        ctx.fillStyle = '#e74c3c';
-        ctx.textAlign = 'left';
-        ctx.fillText(`¡Éxito! El misil defensor intercepta al enemigo en t=${tAtTargetX.toFixed(2)}s`, padding + 20, padding + 95);
+        // Etiqueta del punto de impacto
+        ctx.fillText(`(${xImpact.toFixed(1)}, 0)`, scaleX(xImpact), scaleY(0) - 10);
+      }
+      
+      // Agregar información de la trayectoria
+      ctx.font = '14px Arial';
+      ctx.fillStyle = '#333';
+      ctx.textAlign = 'left';
+      const padding = 40;
+      ctx.fillText(`Alcance: ${xImpact.toFixed(2)} m`, padding + 20, padding + 20);
+      ctx.fillText(`Altura máxima: ${yMax.toFixed(2)} m`, padding + 20, padding + 45);
+      ctx.fillText(`Tiempo de vuelo: ${totalTime.toFixed(2)} s`, padding + 20, padding + 70);
+      
+      // Verificar si el misil defensor puede alcanzar al misil enemigo
+      const targetX = targetDistance;
+      const targetY = enemyHeight;
+      
+      // Calcular la posición del misil defensor en el momento en que x = targetX
+      // Resolviendo para t: targetX = defensorPosition + v0x * t
+      const tAtTargetX = (targetX - defensorPosition) / v0x;
+      
+      // Si el tiempo es negativo o mayor que el tiempo de vuelo, no puede alcanzarlo
+      if (tAtTargetX >= 0 && tAtTargetX <= totalTime) {
+        // Calcular la altura del misil defensor en ese momento
+        const yAtTargetX = v0y * tAtTargetX - 0.5 * g * tAtTargetX * tAtTargetX;
+        
+        // Dibujar línea de intercepción
+        if (Math.abs(yAtTargetX - targetY) < 5) { // Si está a menos de 5 metros
+          ctx.beginPath();
+          ctx.moveTo(scaleX(targetX), scaleY(targetY));
+          ctx.lineTo(scaleX(targetX), scaleY(yAtTargetX));
+          ctx.strokeStyle = '#e74c3c';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          
+          // Dibujar punto de intercepción
+          ctx.beginPath();
+          ctx.arc(scaleX(targetX), scaleY(yAtTargetX), 7, 0, Math.PI * 2);
+          ctx.fillStyle = '#e74c3c';
+          ctx.fill();
+          
+          // Mensaje de intercepción
+          ctx.fillStyle = '#e74c3c';
+          ctx.font = 'bold 14px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('¡INTERCEPCIÓN!', scaleX(targetX), scaleY(yAtTargetX) - 20);
+          
+          ctx.font = '12px Arial';
+          ctx.fillText(`t = ${tAtTargetX.toFixed(2)} s`, scaleX(targetX), scaleY(yAtTargetX) - 35);
+          
+          // Agregar mensaje a la información
+          ctx.font = 'bold 14px Arial';
+          ctx.fillStyle = '#e74c3c';
+          ctx.textAlign = 'left';
+          ctx.fillText(`¡Éxito! El misil defensor intercepta al enemigo en t=${tAtTargetX.toFixed(2)}s`, padding + 20, padding + 95);
+        } else {
+          // Mensaje de fallo
+          ctx.font = '14px Arial';
+          ctx.fillStyle = '#e74c3c';
+          ctx.textAlign = 'left';
+          ctx.fillText(`No hay intercepción. Diferencia de altura: ${Math.abs(yAtTargetX - targetY).toFixed(2)} m`, padding + 20, padding + 95);
+        }
       } else {
-        // Mensaje de fallo
+        // Mensaje de que no puede alcanzarlo
         ctx.font = '14px Arial';
         ctx.fillStyle = '#e74c3c';
         ctx.textAlign = 'left';
-        ctx.fillText(`No hay intercepción. Diferencia de altura: ${Math.abs(yAtTargetX - targetY).toFixed(2)} m`, padding + 20, padding + 95);
+        ctx.fillText('No hay intercepción. El misil defensor no alcanza la posición objetivo.', padding + 20, padding + 95);
       }
-    } else {
-      // Mensaje de que no puede alcanzarlo
-      ctx.font = '14px Arial';
-      ctx.fillStyle = '#e74c3c';
-      ctx.textAlign = 'left';
-      ctx.fillText('No hay intercepción. El misil defensor no alcanza la posición objetivo.', padding + 20, padding + 95);
     }
   };
 
