@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { calculateTrajectory, calculateFlightTime, calculateEnemyMissileTrajectory, Point } from '../lib/parabolicMotion';
+import { calculateTrajectory, calculateFlightTime, calculateEnemyMissileTrajectory, Point } from '../../lib/parabolicMotion';
 
 interface TrajectoryCanvasProps {
   initialSpeed: number;

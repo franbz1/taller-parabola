@@ -54,15 +54,15 @@ export function calculatePosition(
   time: number
 ): Point {
   const angleRadians = (angleDegrees * Math.PI) / 180;
-  
+
   // Componentes de la velocidad inicial
   const vx = initialSpeed * Math.cos(angleRadians);
   const vy = initialSpeed * Math.sin(angleRadians);
-  
+
   // Ecuaciones de posición
   const x = vx * time;
   const y = vy * time - 0.5 * GRAVITY * time * time;
-  
+
   return { x, y };
 }
 
@@ -71,18 +71,18 @@ export function calculatePosition(
  */
 export function calculateTrajectory(data: TrajectoryData): Point[] {
   const { initialSpeed, angle, timeStep = 0.1, maxTime } = data;
-  
+
   // Si no se proporciona un tiempo máximo, calcularlo basado en el tiempo de vuelo
   const flightTime = calculateFlightTime(initialSpeed, angle);
   const actualMaxTime = maxTime || flightTime;
-  
+
   const points: Point[] = [];
   let time = 0;
-  
+
   // Calcular puntos en intervalos regulares
   while (time <= actualMaxTime) {
     const point = calculatePosition(initialSpeed, angle, time);
-    
+
     // Si la posición y ya es negativa (debajo del suelo), ajustar el último punto para que esté en y=0
     // y terminar el cálculo
     if (point.y < 0) {
@@ -90,17 +90,53 @@ export function calculateTrajectory(data: TrajectoryData): Point[] {
       const prevPoint = points[points.length - 1];
       const ratio = prevPoint.y / (prevPoint.y - point.y);
       const finalX = prevPoint.x + ratio * (point.x - prevPoint.x);
-      
+
       points.push({ x: finalX, y: 0 });
       break;
     }
-    
+
     points.push(point);
     time += timeStep;
   }
-  
+
   return points;
 }
+
+// Función para calcular los puntos de la trayectoria del defensor
+export const calculateDefensorTrajectory = (defensorAngle: number, defensorInitialSpeed: number): { x: number, y: number }[] => {
+  const defensorPosition = 0;
+
+  // Calcular parámetros físicos
+  const v0 = defensorInitialSpeed;
+  const theta = defensorAngle * Math.PI / 180;
+
+  // Componentes de la velocidad inicial
+  const v0x = v0 * Math.cos(theta);
+  const v0y = v0 * Math.sin(theta);
+
+  // Tiempo de vuelo
+  const totalTime = (2 * v0y) / GRAVITY;
+
+  // Crear array para almacenar todos los puntos de la trayectoria
+  const points: { x: number, y: number }[] = [];
+
+  // Generar puntos de la trayectoria
+  const steps = 100;
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * totalTime;
+
+    // Posición en cada instante
+    const x = defensorPosition + v0x * t;
+    const y = v0y * t - 0.5 * GRAVITY * t * t;
+
+    // Si ya cayó al suelo, terminamos
+    if (y < 0) break;
+
+    points.push({ x, y });
+  }
+
+  return points;
+};
 
 /**
  * Calcula la trayectoria de un misil enemigo que cae desde una posición inicial con una velocidad inicial
@@ -113,38 +149,38 @@ export function calculateEnemyMissileTrajectory(data: {
   timeStep?: number;    // Paso de tiempo en segundos (opcional)
 }): Point[] {
   const { startX, startY, initialSpeedX, initialSpeedY, timeStep = 0.05 } = data;
-  
+
   const points: Point[] = [];
   let time = 0;
   let x = startX;
   let y = startY;
   let vx = initialSpeedX;
   let vy = initialSpeedY;
-  
+
   // Añadir posición inicial
   points.push({ x, y });
-  
+
   // Calcular puntos en intervalos regulares hasta que el misil toque el suelo
   while (y >= 0) {
     time += timeStep;
-    
+
     // Actualizar posición según ecuaciones de movimiento
     x = startX + vx * time;
     y = startY + vy * time - 0.5 * GRAVITY * time * time;
-    
+
     // Si la posición y ya es negativa (debajo del suelo), ajustar el último punto para que esté en y=0
     if (y < 0) {
       // Interpolar para encontrar el punto exacto donde y=0
       const prevPoint = points[points.length - 1];
       const ratio = prevPoint.y / (prevPoint.y - y);
       const finalX = prevPoint.x + ratio * (x - prevPoint.x);
-      
+
       points.push({ x: finalX, y: 0 });
       break;
     }
-    
+
     points.push({ x, y });
   }
-  
+
   return points;
 } 
