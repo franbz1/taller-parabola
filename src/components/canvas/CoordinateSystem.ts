@@ -6,7 +6,7 @@ export const drawCoordinateSystem = (
   canvas: HTMLCanvasElement, 
   targetParams: TargetData | null
 ) => {
-  const padding = 40;
+  const padding = 60;
   const axisColor = '#333';
   const gridColor = '#e0e0e0';
 
@@ -115,12 +115,12 @@ export const drawCoordinateSystem = (
   // Etiqueta para eje X (ahora al final del eje)
   ctx.textAlign = 'right';
   const xAxisLabel = maxX >= 1000 ? 'Distancia (km)' : 'Distancia (m)';
-  ctx.fillText(xAxisLabel, canvas.width - padding - 20, canvas.height - padding + 30);
+  ctx.fillText(xAxisLabel, canvas.width - padding + 25, canvas.height - padding + 42);
 
   // Etiqueta para eje Y (ahora arriba del eje)
   ctx.textAlign = 'center';
   const yAxisLabel = maxY >= 1000 ? 'Altura (km)' : 'Altura (m)';
-  ctx.fillText(yAxisLabel, padding - 30, padding + 20);
+  ctx.fillText(yAxisLabel, padding - 15, padding - 21);
 
   // Marcas y etiquetas en el eje X
   ctx.textAlign = 'center';

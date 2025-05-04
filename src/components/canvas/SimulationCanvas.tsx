@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { FormData, TargetData } from '../InputForm';
 import { drawCoordinateSystem, drawInstructions } from './CoordinateSystem';
-import { drawDefensorBase } from './defnesor';
 import { drawCity } from './drawCity';
 import { drawExplosion } from './DrawExplosion';
 
@@ -349,10 +348,7 @@ const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
         scaleX, 
         scaleY
       );
-      
-      // Dibujar la base del defensor
-      drawDefensorBase(ctx, canvas, targetParams);
-      
+            
       // Si además tenemos la configuración del defensor y debemos mostrar la trayectoria
       if (formParams && showTrajectory) {
         // Dibujar la trayectoria del misil defensor
