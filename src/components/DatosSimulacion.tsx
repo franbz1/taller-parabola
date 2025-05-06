@@ -15,6 +15,14 @@ interface DatosSimulacionProps {
    */
   velocidadCañon: number;
   /**
+ * umbral para marcar una intercepcion como valida
+ */
+  umbral: number;
+  /**
+ * Manejador de evento para cambio de velocidad
+ */
+  onumbralChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  /**
    * Manejador de evento para cambio de velocidad
    */
   onVelocidadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -63,7 +71,9 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
   anguloCañon,
   onAnguloChange,
   velocidadCañon,
+  umbral,
   onVelocidadChange,
+  onumbralChange,
   escala,
   onEscalaChange,
   range,
@@ -75,15 +85,15 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
   showInterception
 }) => {
   return (
-    <div style={{ 
-      minWidth: '300px', 
-      padding: '15px', 
-      backgroundColor: '#f5f5f5', 
+    <div style={{
+      minWidth: '300px',
+      padding: '15px',
+      backgroundColor: '#f5f5f5',
       borderRadius: '8px',
       border: '1px solid #ddd'
     }}>
       <h3 style={{ marginTop: '0', marginBottom: '15px' }}>Datos de la Simulación</h3>
-      
+
       {/* Control de escala */}
       <div style={{ marginBottom: '16px' }}>
         <label htmlFor="escala-canvas" style={{
@@ -107,7 +117,7 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
           }}
         />
       </div>
-      
+
       {/* Control de ángulo */}
       <div style={{ marginBottom: '16px' }}>
         <label htmlFor="angulo-canon" style={{
@@ -130,7 +140,7 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
           }}
         />
       </div>
-      
+
       {/* Control de velocidad */}
       <div style={{ marginBottom: '16px' }}>
         <label htmlFor="velocidad-canon" style={{
@@ -156,12 +166,38 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
           }}
         />
       </div>
-      
+
+      {/* Control de umbral */}
+      <div style={{ marginBottom: '16px' }}>
+        <label htmlFor="velocidad-canon" style={{
+          display: 'block',
+          fontSize: '14px',
+          fontWeight: '500',
+          marginBottom: '4px'
+        }}>
+          umbral de detección de interceptacion:
+        </label>
+        <input
+          id="velocidad-canon"
+          type="number"
+          min="0.1"
+          step="0.1"
+          value={umbral}
+          onChange={onumbralChange}
+          style={{
+            width: '100%',
+            padding: '8px',
+            border: '1px solid #d1d5db',
+            borderRadius: '4px'
+          }}
+        />
+      </div>
+
       {/* Resultados de la trayectoria parabólica */}
-      <div style={{ 
+      <div style={{
         marginBottom: '16px',
-        padding: '8px', 
-        backgroundColor: '#e6f7ff', 
+        padding: '8px',
+        backgroundColor: '#e6f7ff',
         borderRadius: '4px',
         border: '1px solid #91d5ff'
       }}>
@@ -172,13 +208,13 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
           <div><strong>Tiempo de vuelo:</strong> {flightTime.toFixed(2)} s</div>
         </div>
       </div>
-      
+
       {/* Punto seleccionado */}
       {puntoSeleccionado && (
-        <div style={{ 
+        <div style={{
           marginBottom: '16px',
-          padding: '8px', 
-          backgroundColor: '#fff7e6', 
+          padding: '8px',
+          backgroundColor: '#fff7e6',
           borderRadius: '4px',
           border: '1px solid #ffd591'
         }}>
@@ -189,12 +225,12 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
           </div>
         </div>
       )}
-      
+
       {/* Resultado de intercepción */}
       {showInterception && (
-        <div style={{ 
-          padding: '8px', 
-          backgroundColor: interception.intercepted ? '#f6ffed' : '#fff1f0', 
+        <div style={{
+          padding: '8px',
+          backgroundColor: interception.intercepted ? '#f6ffed' : '#fff1f0',
           borderRadius: '4px',
           border: `1px solid ${interception.intercepted ? '#b7eb8f' : '#ffa39e'}`
         }}>

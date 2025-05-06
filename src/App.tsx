@@ -10,6 +10,7 @@ function App() {
   const [puntoSeleccionado, setPuntoSeleccionado] = useState<{ x: number; y: number } | null>(null);
   const [escalaCanvas, setEscalaCanvas] = useState(10);
   const [iniciarAnimacion, setIniciarAnimacion] = useState(false);
+  const [umbral, setUmbral] = useState(0.5)
 
   // Parámetros para los cálculos de trayectoria
   const timeStep = 0.1; // Intervalo de tiempo para cálculos
@@ -38,7 +39,7 @@ function App() {
   const { freeFallTrajectory } = useFreeFall(freeFallData);
 
   // Calcular intercepción entre trayectorias - siempre llamar al hook
-  const interception = useInterception(trajectoryData, freeFallData, 0.5);
+  const interception = useInterception(trajectoryData, freeFallData, umbral);
   
   // Determinar si debemos mostrar resultados de intercepción
   const showInterception = puntoSeleccionado !== null;
@@ -58,6 +59,15 @@ function App() {
       setIniciarAnimacion(false);
     }
   };
+
+  const handleUmbralChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nuevoUmbral = Number.parseFloat(e.target.value);
+    if (nuevoUmbral > 0) {
+      setUmbral(nuevoUmbral)
+
+      setIniciarAnimacion(false)
+    }
+  }
 
   const handlePuntoSeleccionado = (coordenadas: { x: number; y: number }) => {
     setPuntoSeleccionado(coordenadas);
@@ -159,6 +169,8 @@ function App() {
               freeFallTrajectory={freeFallTrajectory}
               interception={interception}
               showInterception={showInterception}
+              umbral={umbral}
+              onumbralChange={handleUmbralChange}
             />
           </div>
         </div>
