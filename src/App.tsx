@@ -113,6 +113,7 @@ function App() {
                 puntosFreeFall={showInterception ? freeFallTrajectory : []}
                 velocidadAnimacion={50}
                 iniciarAnimacion={iniciarAnimacion}
+                interception={interception}
               />
               
               <div style={{ 

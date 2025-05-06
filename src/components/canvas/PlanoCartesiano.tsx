@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { DibujanteCanvas } from "./dibujante-canvas"
 import { ControladorTrayectoria } from "./controlador-trayectoria"
 import { canvasACoordenadas } from "./utilidades"
-import { Point } from "../../lib/parabolicMotion"
+import { Point, InterceptionResult } from "../../lib/parabolicMotion"
 
 interface PlanoCartesianoProps {
   /**
@@ -53,6 +53,10 @@ interface PlanoCartesianoProps {
    * Si se debe iniciar la animación
    */
   iniciarAnimacion?: boolean
+  /**
+   * Resultado de la intercepción entre trayectorias
+   */
+  interception?: InterceptionResult
 }
 
 /**
@@ -72,11 +76,14 @@ export const PlanoCartesiano = ({
   puntosFreeFall = [],
   velocidadAnimacion = 100,
   iniciarAnimacion = false,
+  interception
 }: PlanoCartesianoProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [animando, setAnimando] = useState(false)
   const [puntosVisiblesTrayectoria, setPuntosVisiblesTrayectoria] = useState<Point[]>([])
   const [puntosVisiblesFreeFall, setPuntosVisiblesFreeFall] = useState<Point[]>([])
+  const [mostrarExplosion, setMostrarExplosion] = useState(false)
+  const [interceptoPuntos, setInterceptoPuntos] = useState(false)
   
   // Referencias a los controladores para poder detenerlos cuando cambia iniciarAnimacion
   const controladorTrayectoriaRef = useRef<ControladorTrayectoria | null>(null)
@@ -115,10 +122,15 @@ export const PlanoCartesiano = ({
       velocidadInicial
     })
     
+    // Punto de intercepción si existe
+    const puntoIntercepcion = interception?.intercepted && interception.point ? interception.point : null;
+    
     dibujante.dibujarPlano(
       puntoSeleccionado, 
       puntosVisiblesTrayectoria,
-      puntosVisiblesFreeFall
+      puntosVisiblesFreeFall,
+      puntoIntercepcion,
+      mostrarExplosion
     )
   }, [
     escala, 
@@ -129,7 +141,9 @@ export const PlanoCartesiano = ({
     velocidadInicial, 
     puntoSeleccionado, 
     puntosVisiblesTrayectoria,
-    puntosVisiblesFreeFall
+    puntosVisiblesFreeFall,
+    interception,
+    mostrarExplosion
   ])
   
   // Efecto para reiniciar los puntos visibles cuando cambia la trayectoria
@@ -137,6 +151,8 @@ export const PlanoCartesiano = ({
     setPuntosVisiblesTrayectoria([])
     setPuntosVisiblesFreeFall([])
     setAnimando(false)
+    setMostrarExplosion(false)
+    setInterceptoPuntos(false)
     
     // Detener cualquier animación en curso
     if (controladorTrayectoriaRef.current) {
@@ -220,6 +236,52 @@ export const PlanoCartesiano = ({
     }
   }, [puntosFreeFall, velocidadAnimacion, iniciarAnimacion])
 
+  // Efecto para detectar si hay intercepción entre los puntos visibles de ambas trayectorias
+  useEffect(() => {
+    // Solo verificar si hay interception y no se ha interceptado aún
+    if (!interception?.intercepted || interceptoPuntos || !animando) {
+      return;
+    }
+
+    // Si hay puntos en ambas trayectorias y hay interception
+    if (puntosVisiblesTrayectoria.length > 0 && puntosVisiblesFreeFall.length > 0) {
+      const tiempoParabolicoInterceptacion = interception.timeParabolic ?? 0;
+      const puntoActualTrayectoria = puntosVisiblesTrayectoria.length - 1;
+      const tiempoActualTrayectoria = puntoActualTrayectoria * (velocidadAnimacion / 1000);
+
+      // Si ya pasamos el tiempo de intercepción en la animación
+      if (tiempoActualTrayectoria >= tiempoParabolicoInterceptacion) {
+        // Detener animaciones
+        if (controladorTrayectoriaRef.current) {
+          controladorTrayectoriaRef.current.detenerAnimacion();
+        }
+        if (controladorFreeFallRef.current) {
+          controladorFreeFallRef.current.detenerAnimacion();
+        }
+
+        // Mostrar explosión
+        setMostrarExplosion(true);
+        setInterceptoPuntos(true);
+        
+        // Reproducir sonido de explosión (opcional)
+        try {
+          const audio = new Audio('/static/medium-explosion-40472.mp3');
+          audio.play().catch(error => console.log('Error al reproducir sonido', error));
+        } catch {
+          console.log('Navegador no soporta reproducción de audio');
+        }
+      }
+    }
+
+  }, [
+    puntosVisiblesTrayectoria, 
+    puntosVisiblesFreeFall, 
+    interception, 
+    interceptoPuntos, 
+    animando, 
+    velocidadAnimacion
+  ]);
+
   return (
     <div style={{ fontFamily: 'Arial, sans-serif' }}>
       <canvas
@@ -232,7 +294,7 @@ export const PlanoCartesiano = ({
           cursor: 'crosshair'
         }}
       />
-      {animando && (
+      {animando && !mostrarExplosion && (
         <div style={{ 
           marginTop: '8px', 
           padding: '8px', 
@@ -241,6 +303,19 @@ export const PlanoCartesiano = ({
           borderRadius: '4px' 
         }}>
           Animando trayectorias...
+        </div>
+      )}
+      
+      {mostrarExplosion && interception?.intercepted && (
+        <div style={{ 
+          marginTop: '8px', 
+          padding: '8px', 
+          backgroundColor: '#f87171', 
+          color: '#ffffff',
+          borderRadius: '4px',
+          fontWeight: 'bold'
+        }}>
+          ¡BOOM! Colisión detectada en el punto ({interception.point?.x.toFixed(1)}, {interception.point?.y.toFixed(1)})
         </div>
       )}
     </div>

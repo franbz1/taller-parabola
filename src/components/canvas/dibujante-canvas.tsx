@@ -33,7 +33,9 @@ export class DibujanteCanvas {
   dibujarPlano(
     puntoSeleccionado: Point | null = null, 
     puntosTrayectoria: Point[] = [],
-    puntosFreeFall: Point[] = []
+    puntosFreeFall: Point[] = [],
+    puntoIntercepcion: Point | null = null,
+    mostrarExplosion: boolean = false
   ) {
     if (!this.canvas || !this.ctx) return
 
@@ -78,6 +80,18 @@ export class DibujanteCanvas {
         this.opciones.escala
       )
       this.dibujarPunto(canvasPos.x, canvasPos.y, puntoSeleccionado)
+    }
+
+    // Dibujar explosión en punto de intercepción si existe y está activa
+    if (puntoIntercepcion && mostrarExplosion) {
+      const canvasPos = coordenadasACanvas(
+        puntoIntercepcion.x, 
+        puntoIntercepcion.y, 
+        origenX, 
+        origenY, 
+        this.opciones.escala
+      )
+      this.dibujarExplosion(canvasPos.x, canvasPos.y)
     }
   }
 
@@ -168,6 +182,59 @@ export class DibujanteCanvas {
       this.ctx.arc(canvasPos.x, canvasPos.y, 4, 0, Math.PI * 2)
       this.ctx.fill()
     }
+  }
+
+  /**
+   * Dibujar una explosión en el punto de intercepción
+   */
+  dibujarExplosion(x: number, y: number) {
+    if (!this.ctx) return
+    
+    const radioMax = this.opciones.escala * 1.2
+    
+    // Crear un gradiente radial para la explosión
+    const gradiente = this.ctx.createRadialGradient(x, y, 0, x, y, radioMax)
+    gradiente.addColorStop(0, 'rgba(255, 255, 0, 0.9)') // Centro amarillo brillante
+    gradiente.addColorStop(0.4, 'rgba(255, 100, 0, 0.8)') // Naranja
+    gradiente.addColorStop(0.7, 'rgba(255, 0, 0, 0.6)') // Rojo
+    gradiente.addColorStop(1, 'rgba(100, 0, 0, 0)') // Exterior transparente
+    
+    // Dibujar círculo principal de la explosión
+    this.ctx.fillStyle = gradiente
+    this.ctx.beginPath()
+    this.ctx.arc(x, y, radioMax, 0, Math.PI * 2)
+    this.ctx.fill()
+    
+    // Dibujar detalles adicionales para dar más realismo
+    // Rayos que salen desde el centro
+    const numRayos = 12
+    const longitudRayos = radioMax * 1.3
+    
+    this.ctx.strokeStyle = 'rgba(255, 255, 200, 0.7)'
+    this.ctx.lineWidth = 2
+    
+    for (let i = 0; i < numRayos; i++) {
+      const angulo = (i / numRayos) * Math.PI * 2
+      this.ctx.beginPath()
+      this.ctx.moveTo(x, y)
+      this.ctx.lineTo(
+        x + Math.cos(angulo) * longitudRayos,
+        y + Math.sin(angulo) * longitudRayos
+      )
+      this.ctx.stroke()
+    }
+    
+    // Círculo brillante en el centro
+    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+    this.ctx.beginPath()
+    this.ctx.arc(x, y, radioMax * 0.2, 0, Math.PI * 2)
+    this.ctx.fill()
+    
+    // Texto "¡BOOM!"
+    this.ctx.fillStyle = 'rgba(255, 50, 0, 1)'
+    this.ctx.font = 'bold 16px Arial'
+    this.ctx.textAlign = 'center'
+    this.ctx.fillText('¡BOOM!', x, y - radioMax - 10)
   }
 
   /**
