@@ -96,36 +96,37 @@ export class DibujanteCanvas {
   }
 
   /**
-   * Dibujar la cuadrícula
+   * Dibujar la cuadrícula con densidad adaptativa según la escala
    */
   dibujarCuadricula(origenX: number, origenY: number) {
     if (!this.ctx) return
-    
-    const { ancho, alto, escala } = this.opciones
-    
-    this.ctx.strokeStyle = "#eee"
+    const { ancho, alto, escala, intervaloMarcas } = this.opciones
+
+    // Umbral mínimo en píxeles para separar líneas de cuadrícula
+    const PIXEL_THRESHOLD = 40
+    // Calcular cuántas unidades hay que saltar para que la distancia en píxeles supere el umbral
+    const unidadesPorSalto = Math.max(intervaloMarcas, Math.ceil(PIXEL_THRESHOLD / escala))
+    const saltoEnPixeles = unidadesPorSalto * escala
+
     this.ctx.lineWidth = 0.5
+    this.ctx.strokeStyle = "#ccc"
 
-    // Calcular cuántas líneas caben en el canvas
-    const lineasHorizontales = Math.ceil(origenY / escala)
-    const lineasVerticales = Math.ceil((ancho - origenX) / escala)
-
-    // Dibujar líneas horizontales
-    for (let i = 0; i <= lineasHorizontales; i++) {
-      const y = origenY - i * escala
+    // Líneas horizontales
+    const lineasY = Math.ceil(origenY / saltoEnPixeles)
+    for (let i = 0; i <= lineasY; i++) {
+      const y = origenY - i * saltoEnPixeles
       if (y < 0 || y > alto) continue
-
       this.ctx.beginPath()
       this.ctx.moveTo(origenX, y)
       this.ctx.lineTo(ancho, y)
       this.ctx.stroke()
     }
 
-    // Dibujar líneas verticales
-    for (let i = 0; i <= lineasVerticales; i++) {
-      const x = origenX + i * escala
+    // Líneas verticales
+    const lineasX = Math.ceil((ancho - origenX) / saltoEnPixeles)
+    for (let i = 0; i <= lineasX; i++) {
+      const x = origenX + i * saltoEnPixeles
       if (x < 0 || x > ancho) continue
-
       this.ctx.beginPath()
       this.ctx.moveTo(x, origenY)
       this.ctx.lineTo(x, 0)
@@ -289,47 +290,96 @@ export class DibujanteCanvas {
   dibujarMarcas(origenX: number, origenY: number) {
     if (!this.ctx) return
     
-    const { ancho, escala, intervaloMarcas } = this.opciones
+    const { ancho, escala, intervaloMarcas: baseIntervaloNumeros } = this.opciones
     
     this.ctx.strokeStyle = "#000"
     this.ctx.lineWidth = 1
     this.ctx.font = "10px Arial"
+    // textAlign y textBaseline son heredados de dibujarEjes (center, middle)
 
-    // Calcular cuántas marcas caben en el canvas
-    const marcasHorizontales = Math.floor((ancho - origenX) / escala)
-    const marcasVerticales = Math.floor(origenY / escala)
+    const MAJOR_TICK_TEXT_PIXEL_THRESHOLD = 35 // Umbral para números
+    const MINOR_TICK_PIXEL_THRESHOLD = 15   // Umbral para marcas menores
 
-    // Dibujar marcas en eje X
-    for (let i = 1; i <= marcasHorizontales; i++) {
-      const x = origenX + i * escala
-      if (x > ancho) continue
+    // --- Calcular intervalo efectivo para los números ---
+    let intervaloEfectivoNumeros: number
+    if (baseIntervaloNumeros <= 0) {
+      intervaloEfectivoNumeros = 1 // Evitar división por cero o bucles infinitos
+    } else if (baseIntervaloNumeros * escala >= MAJOR_TICK_TEXT_PIXEL_THRESHOLD) {
+      intervaloEfectivoNumeros = baseIntervaloNumeros
+    } else {
+      // Incrementar el intervalo base hasta que supere el umbral de píxeles
+      const N = Math.ceil(MAJOR_TICK_TEXT_PIXEL_THRESHOLD / (baseIntervaloNumeros * escala))
+      intervaloEfectivoNumeros = N * baseIntervaloNumeros
+    }
+    // Asegurarse de que el intervalo efectivo no sea cero si N fue cero (aunque ceil(>0) >= 1)
+    if (intervaloEfectivoNumeros <= 0) intervaloEfectivoNumeros = baseIntervaloNumeros > 0 ? baseIntervaloNumeros : 1;
 
-      // Dibujar marca
-      this.ctx.beginPath()
-      this.ctx.moveTo(x, origenY - 5)
-      this.ctx.lineTo(x, origenY + 5)
-      this.ctx.stroke()
 
-      // Dibujar número si corresponde al intervalo
-      if (i % intervaloMarcas === 0) {
-        this.ctx.fillText(`${i}`, x, origenY + 15)
+    // --- Calcular paso para las marcas menores ---
+    const pasoMarcasMenores = Math.max(1, Math.ceil(MINOR_TICK_PIXEL_THRESHOLD / escala))
+
+    const maxValorX = (ancho - origenX) / escala
+    const maxValorY = origenY / escala
+
+    // --- Eje X ---
+    // Marcas Mayores (numeradas)
+    if (intervaloEfectivoNumeros > 0) {
+      for (let valor = intervaloEfectivoNumeros; valor <= maxValorX; valor += intervaloEfectivoNumeros) {
+        const x = origenX + valor * escala
+        if (x > ancho - 5) continue // Evitar dibujar muy cerca del borde
+
+        this.ctx.beginPath()
+        this.ctx.moveTo(x, origenY - 5) // Marca un poco más larga
+        this.ctx.lineTo(x, origenY + 5)
+        this.ctx.stroke()
+        this.ctx.fillText(`${valor}`, x, origenY + 15)
       }
     }
 
-    // Dibujar marcas en eje Y
-    for (let i = 1; i <= marcasVerticales; i++) {
-      const y = origenY - i * escala
-      if (y < 0) continue
+    // Marcas Menores
+    if (pasoMarcasMenores > 0) {
+      for (let valor = pasoMarcasMenores; valor <= maxValorX; valor += pasoMarcasMenores) {
+        if (intervaloEfectivoNumeros > 0 && valor % intervaloEfectivoNumeros === 0) {
+          continue // Ya dibujada como marca mayor
+        }
+        const x = origenX + valor * escala
+        if (x > ancho - 5) continue
 
-      // Dibujar marca
-      this.ctx.beginPath()
-      this.ctx.moveTo(origenX - 5, y)
-      this.ctx.lineTo(origenX + 5, y)
-      this.ctx.stroke()
+        this.ctx.beginPath()
+        this.ctx.moveTo(x, origenY - 3) // Marca más corta
+        this.ctx.lineTo(x, origenY + 3)
+        this.ctx.stroke()
+      }
+    }
 
-      // Dibujar número si corresponde al intervalo
-      if (i % intervaloMarcas === 0) {
-        this.ctx.fillText(`${i}`, origenX - 15, y)
+    // --- Eje Y ---
+    // Marcas Mayores (numeradas)
+    if (intervaloEfectivoNumeros > 0) {
+      for (let valor = intervaloEfectivoNumeros; valor <= maxValorY; valor += intervaloEfectivoNumeros) {
+        const y = origenY - valor * escala
+        if (y < 5) continue // Evitar dibujar muy cerca del borde
+
+        this.ctx.beginPath()
+        this.ctx.moveTo(origenX - 5, y) // Marca un poco más larga
+        this.ctx.lineTo(origenX + 5, y)
+        this.ctx.stroke()
+        this.ctx.fillText(`${valor}`, origenX - 15, y)
+      }
+    }
+
+    // Marcas Menores
+    if (pasoMarcasMenores > 0) {
+      for (let valor = pasoMarcasMenores; valor <= maxValorY; valor += pasoMarcasMenores) {
+        if (intervaloEfectivoNumeros > 0 && valor % intervaloEfectivoNumeros === 0) {
+          continue // Ya dibujada como marca mayor
+        }
+        const y = origenY - valor * escala
+        if (y < 5) continue
+
+        this.ctx.beginPath()
+        this.ctx.moveTo(origenX - 3, y) // Marca más corta
+        this.ctx.lineTo(origenX + 3, y)
+        this.ctx.stroke()
       }
     }
 
@@ -360,33 +410,6 @@ export class DibujanteCanvas {
    */
   dibujarCañon(origenX: number, origenY: number, angulo: number) {
     if (!this.ctx) return
-    
-    const { escala } = this.opciones
-    
-    // Longitud del cañón
-    const longitudCañon = escala * 2
-
-    // Convertir ángulo a radianes (0 grados apunta hacia la derecha)
-    const anguloRad = (angulo * Math.PI) / 180
-
-    // Calcular el punto final del cañón
-    const finX = origenX + longitudCañon * Math.cos(anguloRad)
-    const finY = origenY - longitudCañon * Math.sin(anguloRad)
-
-    // Dibujar la base del cañón (círculo)
-    this.ctx.fillStyle = "#555"
-    this.ctx.beginPath()
-    this.ctx.arc(origenX, origenY, escala / 2, 0, Math.PI * 2)
-    this.ctx.fill()
-
-    // Dibujar el cañón (línea gruesa)
-    this.ctx.strokeStyle = "#333"
-    this.ctx.lineWidth = escala / 3
-    this.ctx.lineCap = "round"
-    this.ctx.beginPath()
-    this.ctx.moveTo(origenX, origenY)
-    this.ctx.lineTo(finX, finY)
-    this.ctx.stroke()
 
     // Dibujar el ángulo actual
     this.ctx.fillStyle = "black"

@@ -62,6 +62,13 @@ interface DatosSimulacionProps {
    * Si se debe mostrar el resultado de intercepción
    */
   showInterception: boolean;
+
+  // Nuevas props para coordenadas manuales
+  inputCoordX: string;
+  onInputCoordXChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  inputCoordY: string;
+  onInputCoordYChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onSetPuntoManualmente: () => void;
 }
 
 /**
@@ -82,11 +89,17 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
   puntoSeleccionado,
   freeFallTrajectory,
   interception,
-  showInterception
+  showInterception,
+  // Destructurar nuevas props
+  inputCoordX,
+  onInputCoordXChange,
+  inputCoordY,
+  onInputCoordYChange,
+  onSetPuntoManualmente
 }) => {
   return (
     <div style={{
-      minWidth: '300px',
+      minWidth: '1000px',
       padding: '15px',
       backgroundColor: '#f5f5f5',
       borderRadius: '8px',
@@ -107,15 +120,82 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
         <input
           id="escala-canvas"
           type="range"
-          min="5"
-          max="30"
-          step="1"
+          min="0.1"
+          max="1"
+          step="0.01"
           value={escala}
           onChange={onEscalaChange}
           style={{
             width: '100%'
           }}
         />
+      </div>
+
+      {/* Inputs para coordenadas manuales */}
+      <div style={{ marginBottom: '16px', display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+        <div style={{ flexGrow: 1 }}>
+          <label htmlFor="coord-x-input" style={{
+            display: 'block',
+            fontSize: '14px',
+            fontWeight: '500',
+            marginBottom: '4px'
+          }}>
+            Coord. X del Objeto:
+          </label>
+          <input
+            id="coord-x-input"
+            type="number"
+            step="0.1"
+            value={inputCoordX}
+            onChange={onInputCoordXChange}
+            placeholder="X"
+            style={{
+              width: '100%',
+              padding: '8px',
+              border: '1px solid #d1d5db',
+              borderRadius: '4px'
+            }}
+          />
+        </div>
+        <div style={{ flexGrow: 1 }}>
+          <label htmlFor="coord-y-input" style={{
+            display: 'block',
+            fontSize: '14px',
+            fontWeight: '500',
+            marginBottom: '4px'
+          }}>
+            Coord. Y del Objeto:
+          </label>
+          <input
+            id="coord-y-input"
+            type="number"
+            step="0.1"
+            value={inputCoordY}
+            onChange={onInputCoordYChange}
+            placeholder="Y"
+            style={{
+              width: '100%',
+              padding: '8px',
+              border: '1px solid #d1d5db',
+              borderRadius: '4px'
+            }}
+          />
+        </div>
+        <button 
+          onClick={onSetPuntoManualmente}
+          style={{
+            padding: '8px 16px',
+            backgroundColor: '#007bff',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontWeight: 500,
+            whiteSpace: 'nowrap' // Evitar que el texto se divida
+          }}
+        >
+          Establecer Punto
+        </button>
       </div>
 
       {/* Control de ángulo */}
@@ -133,6 +213,7 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
           type="range"
           min="0"
           max="90"
+          step="0.01"
           value={anguloCañon}
           onChange={onAnguloChange}
           style={{

@@ -1,20 +1,23 @@
 import './App.css'
 import PlanoCartesiano from './components/canvas/PlanoCartesiano';
 import DatosSimulacion from './components/DatosSimulacion';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTrajectory, useFreeFall, useInterception } from './hooks/useParabolicMotion';
 
 function App() {
   const [anguloCañon, setAnguloCañon] = useState(45);
-  const [velocidadCañon, setVelocidadCañon] = useState(10);
+  const [velocidadCañon, setVelocidadCañon] = useState(100);
   const [puntoSeleccionado, setPuntoSeleccionado] = useState<{ x: number; y: number } | null>(null);
-  const [escalaCanvas, setEscalaCanvas] = useState(10);
+  const [escalaCanvas, setEscalaCanvas] = useState(0.5);
   const [iniciarAnimacion, setIniciarAnimacion] = useState(false);
   const [umbral, setUmbral] = useState(0.5)
 
+  // Estados para los inputs de coordenadas
+  const [inputCoordX, setInputCoordX] = useState<string>("");
+  const [inputCoordY, setInputCoordY] = useState<string>("");
+
   // Parámetros para los cálculos de trayectoria
   const timeStep = 0.1; // Intervalo de tiempo para cálculos
-  const maxTime = 10; // Tiempo máximo de simulación
 
   // Datos para la trayectoria parabólica
   const trajectoryData = useMemo(() => ({
@@ -22,7 +25,6 @@ function App() {
     initialSpeed: velocidadCañon,
     angle: anguloCañon,
     timeStep,
-    maxTime
   }), [velocidadCañon, anguloCañon]);
 
   // Usar el hook para calcular la trayectoria parabólica
@@ -44,8 +46,19 @@ function App() {
   // Determinar si debemos mostrar resultados de intercepción
   const showInterception = puntoSeleccionado !== null;
 
+  // Efecto para actualizar los inputs cuando puntoSeleccionado cambia
+  useEffect(() => {
+    if (puntoSeleccionado) {
+      setInputCoordX(puntoSeleccionado.x.toString());
+      setInputCoordY(puntoSeleccionado.y.toString());
+    } else {
+      setInputCoordX("");
+      setInputCoordY("");
+    }
+  }, [puntoSeleccionado]);
+
   const handleAnguloChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const nuevoAngulo = Number.parseInt(e.target.value);
+    const nuevoAngulo = Number.parseFloat(e.target.value);
     setAnguloCañon(nuevoAngulo);
     // Reset animación
     setIniciarAnimacion(false);
@@ -76,8 +89,31 @@ function App() {
   };
 
   const handleEscalaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const nuevaEscala = Number.parseInt(e.target.value);
+    const nuevaEscala = Number.parseFloat(e.target.value);
     setEscalaCanvas(nuevaEscala);
+  };
+
+  // Manejadores para los inputs de coordenadas
+  const handleInputCoordXChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputCoordX(e.target.value);
+  };
+
+  const handleInputCoordYChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputCoordY(e.target.value);
+  };
+
+  // Función para establecer el punto seleccionado desde los inputs
+  const handleSetPuntoManualmente = () => {
+    const x = Number.parseFloat(inputCoordX);
+    const y = Number.parseFloat(inputCoordY);
+
+    if (!Number.isNaN(x) && !Number.isNaN(y)) {
+      setPuntoSeleccionado({ x, y });
+      setIniciarAnimacion(false); // Reset animación
+    } else {
+      // Opcional: manejar error si la entrada no es válida
+      console.warn("Coordenadas ingresadas no válidas");
+    }
   };
 
   const handleStartAnimation = () => {
@@ -102,9 +138,9 @@ function App() {
             <div>
               <PlanoCartesiano
                 escala={escalaCanvas}
-                intervaloMarcas={3}
-                ancho={600}
-                alto={400}
+                intervaloMarcas={250}
+                ancho={1000}
+                alto={600}
                 anguloInicial={anguloCañon}
                 velocidadInicial={velocidadCañon}
                 onClickPunto={handlePuntoSeleccionado}
@@ -172,6 +208,12 @@ function App() {
               showInterception={showInterception}
               umbral={umbral}
               onumbralChange={handleUmbralChange}
+              // Nuevas props para coordenadas manuales
+              inputCoordX={inputCoordX}
+              inputCoordY={inputCoordY}
+              onInputCoordXChange={handleInputCoordXChange}
+              onInputCoordYChange={handleInputCoordYChange}
+              onSetPuntoManualmente={handleSetPuntoManualmente}
             />
           </div>
         </div>
