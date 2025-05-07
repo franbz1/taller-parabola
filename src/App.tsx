@@ -3,6 +3,7 @@ import PlanoCartesiano from './components/canvas/PlanoCartesiano';
 import DatosSimulacion from './components/DatosSimulacion';
 import { useState, useMemo, useEffect } from 'react';
 import { useTrajectory, useFreeFall, useInterception } from './hooks/useParabolicMotion';
+import type { InterceptionResult } from './lib/parabolicMotion';
 
 function App() {
   const [anguloCañon, setAnguloCañon] = useState(45);
@@ -40,8 +41,28 @@ function App() {
   // Calcular trayectoria de caída libre solo si hay un punto seleccionado
   const { freeFallTrajectory } = useFreeFall(freeFallData);
 
-  // Calcular intercepción entre trayectorias - siempre llamar al hook
-  const interception = useInterception(trajectoryData, freeFallData, umbral);
+  // Calcular intercepción entre trayectorias solo si hay un punto seleccionado
+  const interceptionResult = useInterception(trajectoryData, freeFallData, umbral);
+  
+  // Modificar el resultado de intercepción para que nunca haya intercepción si no hay punto seleccionado
+  const interception: InterceptionResult = useMemo(() => {
+    if (!puntoSeleccionado) {
+      // Devolver un objeto compatible con InterceptionResult pero sin intercepción
+      return {
+        intercepted: false,
+        minDistance: Infinity,
+        point: undefined,
+        timeParabolic: undefined,
+        timeFreefall: undefined,
+        // Propiedades adicionales requeridas:
+        timeParabolicAtMin: 0,
+        timeFreefallAtMin: 0,
+        pointParabolicAtMin: { x: 0, y: 0 },
+        pointFreefallAtMin: { x: 0, y: 0 }
+      };
+    }
+    return interceptionResult;
+  }, [interceptionResult, puntoSeleccionado]);
   
   // Determinar si debemos mostrar resultados de intercepción
   const showInterception = puntoSeleccionado !== null;
