@@ -258,7 +258,6 @@ function App() {
               maxHeight={maxHeight}
               flightTime={flightTime}
               puntoSeleccionado={puntoSeleccionado}
-              freeFallTrajectory={freeFallTrajectory}
               interception={interception}
               showInterception={showInterception}
               umbral={umbral}

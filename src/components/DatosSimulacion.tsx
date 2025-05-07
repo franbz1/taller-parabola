@@ -51,10 +51,6 @@ interface DatosSimulacionProps {
    */
   puntoSeleccionado: { x: number; y: number } | null;
   /**
-   * Trayectoria de caída libre
-   */
-  freeFallTrajectory: { x: number; y: number }[];
-  /**
    * Resultado de intercepción
    */
   interception: InterceptionResult;
@@ -87,7 +83,6 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
   maxHeight,
   flightTime,
   puntoSeleccionado,
-  freeFallTrajectory,
   interception,
   showInterception,
   // Destructurar nuevas props
@@ -328,7 +323,6 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
             <h4 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>Objeto en Caída</h4>
             <div style={{ fontSize: '13px', lineHeight: '1.5' }}>
               <div><strong>Posición inicial:</strong> ({puntoSeleccionado.x}, {puntoSeleccionado.y})</div>
-              <div><strong>Puntos calculados:</strong> {freeFallTrajectory.length}</div>
             </div>
           </div>
         )}
