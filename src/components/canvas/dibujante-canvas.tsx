@@ -191,7 +191,9 @@ export class DibujanteCanvas {
   dibujarExplosion(x: number, y: number) {
     if (!this.ctx) return
     
-    const radioMax = this.opciones.escala * 1.2
+    // Usar un radio fijo en píxeles para la explosión, independiente de la escala
+    const radioMaxBase = 25; // Radio base en píxeles para la explosión principal
+    const radioMax = radioMaxBase * 1.2; // Radio exterior efectivo
     
     // Crear un gradiente radial para la explosión
     const gradiente = this.ctx.createRadialGradient(x, y, 0, x, y, radioMax)
@@ -209,10 +211,10 @@ export class DibujanteCanvas {
     // Dibujar detalles adicionales para dar más realismo
     // Rayos que salen desde el centro
     const numRayos = 12
-    const longitudRayos = radioMax * 1.3
+    const longitudRayos = radioMax * 1.3 // Relativo al radioMax fijo
     
     this.ctx.strokeStyle = 'rgba(255, 255, 200, 0.7)'
-    this.ctx.lineWidth = 2
+    this.ctx.lineWidth = 2 // Ancho de línea fijo para los rayos
     
     for (let i = 0; i < numRayos; i++) {
       const angulo = (i / numRayos) * Math.PI * 2
@@ -228,14 +230,14 @@ export class DibujanteCanvas {
     // Círculo brillante en el centro
     this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
     this.ctx.beginPath()
-    this.ctx.arc(x, y, radioMax * 0.2, 0, Math.PI * 2)
+    this.ctx.arc(x, y, radioMaxBase * 0.25, 0, Math.PI * 2) // Relativo al radioMaxBase fijo
     this.ctx.fill()
     
     // Texto "¡BOOM!"
     this.ctx.fillStyle = 'rgba(255, 50, 0, 1)'
-    this.ctx.font = 'bold 16px Arial'
+    this.ctx.font = 'bold 16px Arial' // Tamaño de fuente fijo
     this.ctx.textAlign = 'center'
-    this.ctx.fillText('¡BOOM!', x, y - radioMax - 10)
+    this.ctx.fillText('¡BOOM!', x, y - radioMax - 10) // Posición relativa al radioMax fijo
   }
 
   /**

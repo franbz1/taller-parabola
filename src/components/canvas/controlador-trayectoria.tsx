@@ -9,17 +9,20 @@ export class ControladorTrayectoria {
   private setAnimando: React.Dispatch<React.SetStateAction<boolean>>
   private velocidadAnimacion: number
   private animacionId: number | null = null
+  private tiempoMaximoAnimacion?: number
   
   constructor(
     puntosTrayectoria: Point[],
     setPuntosVisibles: React.Dispatch<React.SetStateAction<Point[]>>,
     setAnimando: React.Dispatch<React.SetStateAction<boolean>>,
-    velocidadAnimacion: number
+    velocidadAnimacion: number,
+    tiempoMaximoAnimacion?: number
   ) {
     this.puntosTrayectoria = puntosTrayectoria
     this.setPuntosVisibles = setPuntosVisibles
     this.setAnimando = setAnimando
     this.velocidadAnimacion = velocidadAnimacion
+    this.tiempoMaximoAnimacion = tiempoMaximoAnimacion
   }
   
   iniciarAnimacion() {
@@ -28,23 +31,40 @@ export class ControladorTrayectoria {
 
     // Reiniciar puntos y estado
     this.setPuntosVisibles([])
-    this.setAnimando(true)
     
     let indiceActual = 0
     
     const animar = () => {
-      // Si ya llegamos al final, detenemos todo
-      if (indiceActual >= this.puntosTrayectoria.length-1) {
-        this.setAnimando(false)
+      // Si es el primer punto de la animación principal, marcar como animando
+      if (indiceActual === 0) {
+        this.setAnimando(true); 
+      }
+
+      // Añadir el punto actual antes de cualquier verificación de fin
+      // para asegurar que el punto de colisión (o el último punto) se dibuje.
+      if (indiceActual < this.puntosTrayectoria.length) {
+        this.setPuntosVisibles(puntosPrevios => [
+          ...puntosPrevios,
+          this.puntosTrayectoria[indiceActual]
+        ])
+      }
+
+      // Condición 1: ¿Se alcanzó el tiempo máximo de animación (colisión)?
+      if (this.tiempoMaximoAnimacion !== undefined) {
+        const tiempoActualAnimacion = (indiceActual + 1) * (this.velocidadAnimacion / 1000)
+        if (tiempoActualAnimacion >= this.tiempoMaximoAnimacion) {
+          this.setAnimando(false) // Detener animación global si es el controlador principal
+          this.animacionId = null
+          return
+        }
+      }
+      
+      // Condición 2: ¿Se acabaron los puntos de la trayectoria?
+      if (indiceActual >= this.puntosTrayectoria.length - 1) {
+        this.setAnimando(false) // Detener animación global si es el controlador principal
         this.animacionId = null
         return
       }
-
-      // Añadir el siguiente punto
-      this.setPuntosVisibles(puntosPrevios => [
-        ...puntosPrevios,
-        this.puntosTrayectoria[indiceActual]
-      ])
       
       indiceActual++
 
@@ -52,7 +72,12 @@ export class ControladorTrayectoria {
       this.animacionId = window.setTimeout(animar, this.velocidadAnimacion)
     }    
     
-    animar()
+    // Iniciar solo si hay puntos
+    if (this.puntosTrayectoria.length > 0) {
+      animar()
+    } else {
+      this.setAnimando(false) // No hay nada que animar
+    }
   }
   
   detenerAnimacion() {
@@ -60,7 +85,7 @@ export class ControladorTrayectoria {
       clearTimeout(this.animacionId)
       this.animacionId = null
     }
-    // Aseguramos que ya no estamos “animando”
+    // Aseguramos que ya no estamos "animando"
     this.setAnimando(false)
   }
 }

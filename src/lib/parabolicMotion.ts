@@ -203,6 +203,8 @@ export function detectInterception(
   freeData: FreeFallData,
   tolerance = 0.1
 ): InterceptionResult {
+
+  
   const P = calculateTrajectory(parabolicData);
   const F = calculateFreeFall(freeData);
   const dtP = parabolicData.timeStep ?? 0.1;

@@ -177,14 +177,19 @@ export const PlanoCartesiano = ({
     // No iniciar nada si no hay puntos o no se debe iniciar
     if (puntosTrayectoria.length === 0 || !iniciarAnimacion) {
       setPuntosVisiblesTrayectoria([]);
+      // Si no se va a iniciar, asegurarse de que animando esté en false
+      if (!iniciarAnimacion) setAnimando(false); 
       return;
     }
+
+    const tiempoMaxProyectil = interception?.intercepted ? interception.timeParabolic : undefined;
 
     const controladorTrayectoria = new ControladorTrayectoria(
       puntosTrayectoria,
       setPuntosVisiblesTrayectoria,
-      setAnimando,
-      velocidadAnimacion
+      setAnimando, // Este setAnimando es el que actualiza el estado global
+      velocidadAnimacion,
+      tiempoMaxProyectil
     )
     
     // Guardar referencia para poder detenerlo después
@@ -198,7 +203,7 @@ export const PlanoCartesiano = ({
         controladorTrayectoriaRef.current.detenerAnimacion()
       }
     }
-  }, [puntosTrayectoria, velocidadAnimacion, iniciarAnimacion])
+  }, [puntosTrayectoria, velocidadAnimacion, iniciarAnimacion, interception])
 
   // Efecto para controlar la animación de la trayectoria de caída libre
   useEffect(() => {
@@ -208,19 +213,20 @@ export const PlanoCartesiano = ({
       controladorFreeFallRef.current = null
     }
     
-    // No iniciar nada si no hay puntos o no se debe iniciar
-    if (puntosFreeFall.length === 0 || !iniciarAnimacion) {
+    // No iniciar nada si no hay puntos o no se debe iniciar, o si no hay punto seleccionado
+    if (puntosFreeFall.length === 0 || !iniciarAnimacion || !puntoSeleccionado) {
       setPuntosVisiblesFreeFall([]);
       return;
     }
 
+    const tiempoMaxCaidaLibre = interception?.intercepted ? interception.timeFreefall : undefined;
+
     const controladorFreeFall = new ControladorTrayectoria(
       puntosFreeFall,
       setPuntosVisiblesFreeFall,
-      // No modificamos el estado de animación ya que eso lo hace el controlador 
-      // de la trayectoria principal
-      () => {},
-      velocidadAnimacion
+      () => {}, // Este controlador no modifica el estado global `animando`
+      velocidadAnimacion,
+      tiempoMaxCaidaLibre
     )
     
     // Guardar referencia para poder detenerlo después
@@ -234,52 +240,52 @@ export const PlanoCartesiano = ({
         controladorFreeFallRef.current.detenerAnimacion()
       }
     }
-  }, [puntosFreeFall, velocidadAnimacion, iniciarAnimacion])
+  }, [puntosFreeFall, velocidadAnimacion, iniciarAnimacion, puntoSeleccionado, interception])
 
-  // Efecto para detectar si hay intercepción entre los puntos visibles de ambas trayectorias
+  // Efecto para detectar si hay intercepción y gestionar la explosión
   useEffect(() => {
-    // Solo verificar si hay interception y no se ha interceptado aún
-    if (!interception?.intercepted || interceptoPuntos || !animando) {
-      return;
-    }
+    // Si la animación principal ha terminado (animando es false)
+    // Y la intención era animar (iniciarAnimacion es true)
+    // Y hay una intercepción detectada por el hook
+    // Y aún no hemos mostrado la explosión (interceptoPuntos es false)
+    if (!animando && iniciarAnimacion && interception?.intercepted && !interceptoPuntos) {
+      // No necesitamos detener los controladores aquí, ellos se auto-detienen
+      // por tiempoMaximoAnimacion o por llegar al final de sus puntos.
 
-    // Si hay puntos en ambas trayectorias y hay interception
-    if (puntosVisiblesTrayectoria.length > 0 && puntosVisiblesFreeFall.length > 0) {
-      const tiempoParabolicoInterceptacion = interception.timeParabolic ?? 0;
-      const puntoActualTrayectoria = puntosVisiblesTrayectoria.length - 1;
-      const tiempoActualTrayectoria = puntoActualTrayectoria * (velocidadAnimacion / 1000);
+      setMostrarExplosion(true);
+      setInterceptoPuntos(true);
+      
+      // Opcional: Forzar que los puntos visibles finales sean exactamente los del punto de intercepción
+      // Esto es más complejo y puede no ser necesario si la aproximación es buena.
+      // Ejemplo conceptual (requeriría más lógica para encontrar el índice exacto):
+      // if (interception.point && interception.timeParabolic && interception.timeFreefall) {
+      //   const finalIndexProyectil = Math.floor(interception.timeParabolic / (velocidadAnimacion / 1000));
+      //   setPuntosVisiblesTrayectoria(prev => prev.slice(0, finalIndexProyectil + 1));
+      //   // Similar para freeFall
+      // }
 
-      // Si ya pasamos el tiempo de intercepción en la animación
-      if (tiempoActualTrayectoria >= tiempoParabolicoInterceptacion) {
-        // Detener animaciones
-        if (controladorTrayectoriaRef.current) {
-          controladorTrayectoriaRef.current.detenerAnimacion();
-        }
-        if (controladorFreeFallRef.current) {
-          controladorFreeFallRef.current.detenerAnimacion();
-        }
-
-        // Mostrar explosión
-        setMostrarExplosion(true);
-        setInterceptoPuntos(true);
-        
-        // Reproducir sonido de explosión (opcional)
-        try {
-          const audio = new Audio('/static/medium-explosion-40472.mp3');
-          audio.play().catch(error => console.log('Error al reproducir sonido', error));
-        } catch {
-          console.log('Navegador no soporta reproducción de audio');
-        }
+      // Reproducir sonido de explosión
+      try {
+        const audio = new Audio('/static/medium-explosion-40472.mp3');
+        audio.play().catch(error => console.log('Error al reproducir sonido', error));
+      } catch {
+        console.log('Navegador no soporta reproducción de audio');
       }
+    }
+    // Si la animación se detiene por otra razón (ej. el usuario la para) y había una intercepción pendiente,
+    // resetear interceptoPuntos para permitir una nueva detección si se reanuda.
+    else if (!iniciarAnimacion && interceptoPuntos) {
+        // setInterceptoPuntos(false); // Esto podría causar bucles si iniciarAnimacion y animando cambian rápido
+        // setMostrarExplosion(false); // Idem
     }
 
   }, [
-    puntosVisiblesTrayectoria, 
-    puntosVisiblesFreeFall, 
+    animando, 
+    iniciarAnimacion, 
     interception, 
     interceptoPuntos, 
-    animando, 
-    velocidadAnimacion
+    // No necesitamos puntosVisibles* aquí porque la lógica ahora depende del estado `animando` y la data de `interception`
+    velocidadAnimacion // Aunque velocidadAnimacion no se usa directamente aquí, si cambia, puede afectar cómo/cuándo `animando` se vuelve false.
   ]);
 
   return (

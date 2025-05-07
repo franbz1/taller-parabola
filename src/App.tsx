@@ -147,7 +147,7 @@ function App() {
                 puntoSeleccionado={puntoSeleccionado}
                 puntosTrayectoria={trajectory}
                 puntosFreeFall={showInterception ? freeFallTrajectory : []}
-                velocidadAnimacion={50}
+                velocidadAnimacion={100}
                 iniciarAnimacion={iniciarAnimacion}
                 interception={interception}
               />
