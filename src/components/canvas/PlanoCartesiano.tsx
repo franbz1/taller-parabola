@@ -264,7 +264,7 @@ export const PlanoCartesiano = ({
       
       // Reproducir sonido de explosión
       try {
-        const audio = new Audio('/static/medium-explosion-40472.mp3');
+        const audio = new Audio('/sounds/medium-explosion-40472.mp3');
         audio.play().catch(error => console.log('Error al reproducir sonido', error));
       } catch {
         console.log('Navegador no soporta reproducción de audio');
