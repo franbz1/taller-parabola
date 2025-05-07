@@ -120,7 +120,7 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
         <input
           id="escala-canvas"
           type="range"
-          min="0.1"
+          min="0.01"
           max="1"
           step="0.01"
           value={escala}
