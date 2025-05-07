@@ -122,6 +122,7 @@ export const PlanoCartesiano = ({
       anguloInicial,
       velocidadInicial
     })
+
     
     // Punto de intercepción si existe
     const puntoIntercepcion = interception?.intercepted && interception.point ? interception.point : null;
@@ -144,7 +145,7 @@ export const PlanoCartesiano = ({
     puntosVisiblesTrayectoria,
     puntosVisiblesFreeFall,
     interception,
-    mostrarExplosion
+    mostrarExplosion,
   ])
   
   // Efecto para reiniciar los puntos visibles cuando cambia la trayectoria
@@ -214,6 +215,7 @@ export const PlanoCartesiano = ({
 
   // Efecto para controlar la animación de la trayectoria de caída libre
   useEffect(() => {
+    
     // Detener animación previa si existe
     if (controladorFreeFallRef.current) {
       controladorFreeFallRef.current.detenerAnimacion()
@@ -253,10 +255,10 @@ export const PlanoCartesiano = ({
   useEffect(() => {
     // Si la animación ha comenzado, luego terminó (animando es false),
     // la intención sigue siendo animar, y hay una intercepción no mostrada aún
+
     if (animacionComenzada && !animando && iniciarAnimacion && interception?.intercepted && !interceptoPuntos) {
       // No necesitamos detener los controladores aquí, ellos se auto-detienen
       // por tiempoMaximoAnimacion o por llegar al final de sus puntos.
-
       setMostrarExplosion(true);
       setInterceptoPuntos(true);
       
@@ -271,8 +273,8 @@ export const PlanoCartesiano = ({
     // Si la animación se detiene por otra razón (ej. el usuario la para) y había una intercepción pendiente,
     // resetear interceptoPuntos para permitir una nueva detección si se reanuda.
     else if (!iniciarAnimacion && interceptoPuntos) {
-        // setInterceptoPuntos(false); // Esto podría causar bucles si iniciarAnimacion y animando cambian rápido
-        // setMostrarExplosion(false); // Idem
+        setInterceptoPuntos(false); // Esto podría causar bucles si iniciarAnimacion y animando cambian rápido
+        setMostrarExplosion(false); // Idem
     }
 
   }, [

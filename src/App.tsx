@@ -1,11 +1,13 @@
 import './App.css'
 import PlanoCartesiano from './components/canvas/PlanoCartesiano';
 import DatosSimulacion from './components/DatosSimulacion';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useTrajectory, useFreeFall, useInterception } from './hooks/useParabolicMotion';
 import type { InterceptionResult } from './lib/parabolicMotion';
 
 function App() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 1000, height: 600 });
   const [anguloCañon, setAnguloCañon] = useState(45);
   const [velocidadCañon, setVelocidadCañon] = useState(100);
   const [puntoSeleccionado, setPuntoSeleccionado] = useState<{ x: number; y: number } | null>(null);
@@ -19,6 +21,28 @@ function App() {
 
   // Parámetros para los cálculos de trayectoria
   const timeStep = 0.1; // Intervalo de tiempo para cálculos
+
+  // Actualizar tamaño del canvas basado en el tamaño de la ventana
+  useEffect(() => {
+    const updateCanvasSize = () => {
+      if (containerRef.current) {
+        const containerWidth = containerRef.current.clientWidth;
+        // Calcular altura manteniendo proporción 5:3
+        const containerHeight = Math.min(containerWidth * 0.6, 600);
+        setCanvasSize({
+          width: containerWidth,
+          height: containerHeight
+        });
+      }
+    };
+
+    // Inicializar tamaño
+    updateCanvasSize();
+
+    // Actualizar tamaño en resize
+    window.addEventListener('resize', updateCanvasSize);
+    return () => window.removeEventListener('resize', updateCanvasSize);
+  }, []);
 
   // Datos para la trayectoria parabólica
   const trajectoryData = useMemo(() => ({
@@ -144,24 +168,33 @@ function App() {
   const handleRestartAnimation = () => {
     setIniciarAnimacion(false);
     // Pequeño retraso para asegurar que el estado se actualiza antes de volver a iniciar
-    setTimeout(() => setIniciarAnimacion(true), 50);
+    setTimeout(() => setIniciarAnimacion(true), 100);
   };
 
   return (
-    <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: '1000px', margin: '0 auto', padding: '20px' }}>
+    <div 
+      ref={containerRef}
+      style={{ 
+        fontFamily: 'Arial, sans-serif', 
+        width: '100%',
+        maxWidth: '1200px', 
+        margin: '0 auto', 
+        padding: '10px' 
+      }}
+    >
       <header style={{ marginBottom: '20px', textAlign: 'center' }}>
-        <h1 style={{ color: '#333' }}>Simulador de Trayectoria Parabólica</h1>
+        <h1 style={{ color: '#333', fontSize: 'clamp(1.5rem, 4vw, 2rem)' }}>Simulador de Trayectoria Parabólica</h1>
       </header>
       <main>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
-          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-            <div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ width: '100%' }}>
               <PlanoCartesiano
                 escala={escalaCanvas}
                 intervaloMarcas={250}
-                ancho={1000}
-                alto={600}
+                ancho={canvasSize.width}
+                alto={canvasSize.height}
                 anguloInicial={anguloCañon}
                 velocidadInicial={velocidadCañon}
                 onClickPunto={handlePuntoSeleccionado}
@@ -177,7 +210,8 @@ function App() {
                 marginTop: '15px', 
                 display: 'flex', 
                 justifyContent: 'center', 
-                gap: '10px' 
+                gap: '10px',
+                flexWrap: 'wrap'
               }}>
                 <button 
                   onClick={handleStartAnimation} 

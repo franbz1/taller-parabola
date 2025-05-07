@@ -99,7 +99,7 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
 }) => {
   return (
     <div style={{
-      minWidth: '1000px',
+      width: '100%',
       padding: '15px',
       backgroundColor: '#f5f5f5',
       borderRadius: '8px',
@@ -120,7 +120,7 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
         <input
           id="escala-canvas"
           type="range"
-          min="0.1"
+          min="0.01"
           max="1"
           step="0.01"
           value={escala}
@@ -132,54 +132,56 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
       </div>
 
       {/* Inputs para coordenadas manuales */}
-      <div style={{ marginBottom: '16px', display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
-        <div style={{ flexGrow: 1 }}>
-          <label htmlFor="coord-x-input" style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            marginBottom: '4px'
-          }}>
-            Coord. X del Objeto:
-          </label>
-          <input
-            id="coord-x-input"
-            type="number"
-            step="0.1"
-            value={inputCoordX}
-            onChange={onInputCoordXChange}
-            placeholder="X"
-            style={{
-              width: '100%',
-              padding: '8px',
-              border: '1px solid #d1d5db',
-              borderRadius: '4px'
-            }}
-          />
-        </div>
-        <div style={{ flexGrow: 1 }}>
-          <label htmlFor="coord-y-input" style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            marginBottom: '4px'
-          }}>
-            Coord. Y del Objeto:
-          </label>
-          <input
-            id="coord-y-input"
-            type="number"
-            step="0.1"
-            value={inputCoordY}
-            onChange={onInputCoordYChange}
-            placeholder="Y"
-            style={{
-              width: '100%',
-              padding: '8px',
-              border: '1px solid #d1d5db',
-              borderRadius: '4px'
-            }}
-          />
+      <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 120px', minWidth: '120px' }}>
+            <label htmlFor="coord-x-input" style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              marginBottom: '4px'
+            }}>
+              Coord. X del Avion bombardero:
+            </label>
+            <input
+              id="coord-x-input"
+              type="number"
+              step="0.1"
+              value={inputCoordX}
+              onChange={onInputCoordXChange}
+              placeholder="X"
+              style={{
+                width: '100%',
+                padding: '8px',
+                border: '1px solid #d1d5db',
+                borderRadius: '4px'
+              }}
+            />
+          </div>
+          <div style={{ flex: '1 1 120px', minWidth: '120px' }}>
+            <label htmlFor="coord-y-input" style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              marginBottom: '4px'
+            }}>
+              Coord. Y del Avion bombardero:
+            </label>
+            <input
+              id="coord-y-input"
+              type="number"
+              step="0.1"
+              value={inputCoordY}
+              onChange={onInputCoordYChange}
+              placeholder="Y"
+              style={{
+                width: '100%',
+                padding: '8px',
+                border: '1px solid #d1d5db',
+                borderRadius: '4px'
+              }}
+            />
+          </div>
         </div>
         <button 
           onClick={onSetPuntoManualmente}
@@ -191,7 +193,7 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
             borderRadius: '4px',
             cursor: 'pointer',
             fontWeight: 500,
-            whiteSpace: 'nowrap' // Evitar que el texto se divida
+            width: 'fit-content'
           }}
         >
           Establecer Punto
@@ -206,20 +208,44 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
           fontWeight: '500',
           marginBottom: '4px'
         }}>
-          Ángulo del cañón: {anguloCañon}°
+          Ángulo del cañón:
         </label>
-        <input
-          id="angulo-canon"
-          type="range"
-          min="0"
-          max="90"
-          step="0.01"
-          value={anguloCañon}
-          onChange={onAnguloChange}
-          style={{
-            width: '100%'
-          }}
-        />
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 200px', minWidth: '150px' }}>
+            <input
+              id="angulo-canon"
+              type="range"
+              min="0"
+              max="90"
+              step="0.01"
+              value={anguloCañon}
+              onChange={onAnguloChange}
+              style={{
+                width: '100%'
+              }}
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <input
+              id="angulo-canon-input"
+              type="number"
+              min="0"
+              max="90"
+              step="0.01"
+              value={anguloCañon}
+              onChange={onAnguloChange}
+              style={{
+                width: '80px',
+                padding: '8px',
+                border: '1px solid #d1d5db',
+                borderRadius: '4px'
+              }}
+            />
+            <div style={{ minWidth: '20px' }}>
+              °
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Control de velocidad */}
@@ -250,16 +276,16 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
 
       {/* Control de umbral */}
       <div style={{ marginBottom: '16px' }}>
-        <label htmlFor="velocidad-canon" style={{
+        <label htmlFor="umbral-deteccion" style={{
           display: 'block',
           fontSize: '14px',
           fontWeight: '500',
           marginBottom: '4px'
         }}>
-          umbral de detección de interceptacion:
+          Umbral de detección de interceptación:
         </label>
         <input
-          id="velocidad-canon"
+          id="umbral-deteccion"
           type="number"
           min="0.1"
           step="0.1"
@@ -274,63 +300,64 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
         />
       </div>
 
-      {/* Resultados de la trayectoria parabólica */}
-      <div style={{
-        marginBottom: '16px',
-        padding: '8px',
-        backgroundColor: '#e6f7ff',
-        borderRadius: '4px',
-        border: '1px solid #91d5ff'
-      }}>
-        <h4 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>Trayectoria del Proyectil</h4>
-        <div style={{ fontSize: '13px', lineHeight: '1.5' }}>
-          <div><strong>Alcance máximo:</strong> {range.toFixed(2)} m</div>
-          <div><strong>Altura máxima:</strong> {maxHeight.toFixed(2)} m</div>
-          <div><strong>Tiempo de vuelo:</strong> {flightTime.toFixed(2)} s</div>
-        </div>
-      </div>
-
-      {/* Punto seleccionado */}
-      {puntoSeleccionado && (
+      {/* Sección de resultados */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {/* Resultados de la trayectoria parabólica */}
         <div style={{
-          marginBottom: '16px',
           padding: '8px',
-          backgroundColor: '#fff7e6',
+          backgroundColor: '#e6f7ff',
           borderRadius: '4px',
-          border: '1px solid #ffd591'
+          border: '1px solid #91d5ff'
         }}>
-          <h4 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>Objeto en Caída</h4>
+          <h4 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>Trayectoria del Proyectil</h4>
           <div style={{ fontSize: '13px', lineHeight: '1.5' }}>
-            <div><strong>Posición inicial:</strong> ({puntoSeleccionado.x}, {puntoSeleccionado.y})</div>
-            <div><strong>Puntos calculados:</strong> {freeFallTrajectory.length}</div>
+            <div><strong>Alcance máximo:</strong> {range.toFixed(2)} m</div>
+            <div><strong>Altura máxima:</strong> {maxHeight.toFixed(2)} m</div>
+            <div><strong>Tiempo de vuelo:</strong> {flightTime.toFixed(2)} s</div>
           </div>
         </div>
-      )}
 
-      {/* Resultado de intercepción */}
-      {showInterception && (
-        <div style={{
-          padding: '8px',
-          backgroundColor: interception.intercepted ? '#f6ffed' : '#fff1f0',
-          borderRadius: '4px',
-          border: `1px solid ${interception.intercepted ? '#b7eb8f' : '#ffa39e'}`
-        }}>
-          <h4 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>Intercepción</h4>
-          {interception.intercepted ? (
+        {/* Punto seleccionado */}
+        {puntoSeleccionado && (
+          <div style={{
+            padding: '8px',
+            backgroundColor: '#fff7e6',
+            borderRadius: '4px',
+            border: '1px solid #ffd591'
+          }}>
+            <h4 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>Objeto en Caída</h4>
             <div style={{ fontSize: '13px', lineHeight: '1.5' }}>
-              <div><strong>¡Interceptado!</strong></div>
-              <div><strong>Posición:</strong> ({interception.point?.x.toFixed(1)}, {interception.point?.y.toFixed(1)})</div>
-              <div><strong>Tiempo proyectil:</strong> {interception.timeParabolic?.toFixed(2)} s</div>
-              <div><strong>Tiempo objeto:</strong> {interception.timeFreefall?.toFixed(2)} s</div>
+              <div><strong>Posición inicial:</strong> ({puntoSeleccionado.x}, {puntoSeleccionado.y})</div>
+              <div><strong>Puntos calculados:</strong> {freeFallTrajectory.length}</div>
             </div>
-          ) : (
-            <div style={{ fontSize: '13px' }}>
-              <div><strong>No hubo intercepción</strong></div>
-              <div><strong>Distancia mínima:</strong> {interception.minDistance.toFixed(2)} m</div>
-            </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+
+        {/* Resultado de intercepción */}
+        {showInterception && (
+          <div style={{
+            padding: '8px',
+            backgroundColor: interception.intercepted ? '#f6ffed' : '#fff1f0',
+            borderRadius: '4px',
+            border: `1px solid ${interception.intercepted ? '#b7eb8f' : '#ffa39e'}`
+          }}>
+            <h4 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>Intercepción</h4>
+            {interception.intercepted ? (
+              <div style={{ fontSize: '13px', lineHeight: '1.5' }}>
+                <div><strong>¡Interceptado!</strong></div>
+                <div><strong>Posición:</strong> ({interception.point?.x.toFixed(1)}, {interception.point?.y.toFixed(1)})</div>
+                <div><strong>Tiempo proyectil:</strong> {interception.timeParabolic?.toFixed(2)} s</div>
+                <div><strong>Tiempo objeto:</strong> {interception.timeFreefall?.toFixed(2)} s</div>
+              </div>
+            ) : (
+              <div style={{ fontSize: '13px' }}>
+                <div><strong>No hubo intercepción</strong></div>
+                <div><strong>Distancia mínima:</strong> {interception.minDistance.toFixed(2)} m</div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
