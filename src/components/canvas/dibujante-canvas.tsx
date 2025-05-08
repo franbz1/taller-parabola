@@ -1,5 +1,7 @@
 import { Point } from "../../lib/parabolicMotion"
 import { coordenadasACanvas } from "./utilidades"
+import { DibujanteAvion } from "./dibujante-avion"
+import { DibujanteMisil } from "./dibujante-misil"
 
 /**
  * Opciones para el dibujante del canvas
@@ -57,20 +59,19 @@ export class DibujanteCanvas {
     // Dibujar marcas y números
     this.dibujarMarcas(origenX, origenY)
 
-    // Dibujar cañón
-    this.dibujarCañon(origenX, origenY, this.opciones.anguloInicial)
+    // Ya no dibujamos el cañón aquí, se hace por separado para mejor control
 
     // Dibujar trayectoria del proyectil si existe
     if (puntosTrayectoria.length > 0) {
-      this.dibujarTrayectoria(puntosTrayectoria, origenX, origenY, "blue")
+      DibujanteMisil.dibujarTrayectoria(this.ctx, puntosTrayectoria, origenX, origenY, this.opciones.escala, "blue")
     }
 
     // Dibujar trayectoria de caída libre si existe
     if (puntosFreeFall.length > 0) {
-      this.dibujarTrayectoria(puntosFreeFall, origenX, origenY, "orange")
+      DibujanteMisil.dibujarTrayectoria(this.ctx, puntosFreeFall, origenX, origenY, this.opciones.escala, "orange")
     }
 
-    // Dibujar punto seleccionado si existe
+    // Dibujar punto seleccionado como un avión si existe
     if (puntoSeleccionado) {
       const canvasPos = coordenadasACanvas(
         puntoSeleccionado.x, 
@@ -79,7 +80,8 @@ export class DibujanteCanvas {
         origenY, 
         this.opciones.escala
       )
-      this.dibujarPunto(canvasPos.x, canvasPos.y, puntoSeleccionado)
+      // Usar el dibujante de avión en lugar de dibujarPunto
+      DibujanteAvion.dibujar(this.ctx, canvasPos.x, canvasPos.y)
     }
 
     // Dibujar explosión en punto de intercepción si existe y está activa
@@ -93,6 +95,24 @@ export class DibujanteCanvas {
       )
       this.dibujarExplosion(canvasPos.x, canvasPos.y)
     }
+  }
+
+  /**
+   * Obtiene las coordenadas del origen del plano
+   * @returns Coordenadas del origen {x, y}
+   */
+  getOrigenCoords(): {x: number, y: number} {
+    const origenX = 40; // Margen para los números
+    const origenY = this.opciones.alto - 40; // Margen para los números
+    return { x: origenX, y: origenY };
+  }
+
+  /**
+   * Obtiene el contexto del canvas
+   * @returns El contexto del canvas o null si no está disponible
+   */
+  getContext(): CanvasRenderingContext2D | null {
+    return this.ctx;
   }
 
   /**
@@ -131,57 +151,6 @@ export class DibujanteCanvas {
       this.ctx.moveTo(x, origenY)
       this.ctx.lineTo(x, 0)
       this.ctx.stroke()
-    }
-  }
-
-  /**
-   * Dibujar una trayectoria
-   */
-  dibujarTrayectoria(puntos: Point[], origenX: number, origenY: number, color: string = "blue") {
-    if (!this.ctx || puntos.length === 0) return
-    
-    const { escala } = this.opciones
-    
-    this.ctx.strokeStyle = color
-    this.ctx.lineWidth = 2
-    this.ctx.lineJoin = "round"
-    
-    // Dibujar línea que conecta los puntos
-    this.ctx.beginPath()
-    
-    for (let i = 0; i < puntos.length; i++) {
-      const canvasPos = coordenadasACanvas(
-        puntos[i].x, 
-        puntos[i].y, 
-        origenX, 
-        origenY, 
-        escala
-      )
-      
-      if (i === 0) {
-        this.ctx.moveTo(canvasPos.x, canvasPos.y)
-      } else {
-        this.ctx.lineTo(canvasPos.x, canvasPos.y)
-      }
-    }
-    
-    this.ctx.stroke()
-    
-    // Dibujar el último punto como un círculo
-    if (puntos.length > 0) {
-      const ultimoPunto = puntos[puntos.length - 1]
-      const canvasPos = coordenadasACanvas(
-        ultimoPunto.x, 
-        ultimoPunto.y, 
-        origenX, 
-        origenY, 
-        escala
-      )
-      
-      this.ctx.fillStyle = color
-      this.ctx.beginPath()
-      this.ctx.arc(canvasPos.x, canvasPos.y, 4, 0, Math.PI * 2)
-      this.ctx.fill()
     }
   }
 
@@ -387,35 +356,5 @@ export class DibujanteCanvas {
 
     // Dibujar origen (0,0)
     this.ctx.fillText("0", origenX - 10, origenY + 15)
-  }
-
-  /**
-   * Dibujar un punto con sus coordenadas
-   */
-  dibujarPunto(x: number, y: number, coordenadas: Point) {
-    if (!this.ctx) return
-    
-    // Dibujar círculo
-    this.ctx.fillStyle = "red"
-    this.ctx.beginPath()
-    this.ctx.arc(x, y, 5, 0, Math.PI * 2)
-    this.ctx.fill()
-
-    // Dibujar coordenadas
-    this.ctx.fillStyle = "black"
-    this.ctx.font = "12px Arial"
-    this.ctx.fillText(`(${coordenadas.x}, ${coordenadas.y})`, x, y - 10)
-  }
-
-  /**
-   * Dibujar el cañón en el origen
-   */
-  dibujarCañon(origenX: number, origenY: number, angulo: number) {
-    if (!this.ctx) return
-
-    // Dibujar el ángulo actual
-    this.ctx.fillStyle = "black"
-    this.ctx.font = "12px Arial"
-    this.ctx.fillText(`${angulo}°`, origenX + 10, origenY - 10)
   }
 }

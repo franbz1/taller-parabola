@@ -100,3 +100,210 @@ main {
     flex: 1;
   }
 }
+
+/* App-wide styles */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Roboto', 'Segoe UI', 'Arial', sans-serif;
+  background-color: #f0f4f8;
+}
+
+/* Layout styles */
+.simulator-container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+/* Header styling */
+.simulator-container header {
+  margin-bottom: 24px;
+  text-align: center;
+  border-bottom: 1px solid #e7e7e7;
+  padding-bottom: 16px;
+}
+
+.simulator-container header h1 {
+  color: #2C3E50;
+  font-size: clamp(1.5rem, 3.5vw, 2.25rem);
+  font-weight: 600;
+  margin: 0;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.simulator-container header p {
+  color: #5D6D7E;
+  font-size: clamp(0.9rem, 1.5vw, 1.1rem);
+  margin-top: 8px;
+}
+
+/* Main content */
+.simulator-container main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Responsive grid layout */
+.simulator-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 700px), 1fr));
+  gap: 24px;
+}
+
+/* Canvas panel styling */
+.simulator-canvas-panel {
+  display: flex;
+  flex-direction: column;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  padding: 16px;
+  overflow: hidden;
+}
+
+.canvas-container {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+  position: relative;
+  background-color: #f8f9fa;
+}
+
+/* Animation controls styling */
+.animation-controls {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 6px;
+  background-color: #f0f4f8;
+}
+
+/* Controls panel styling */
+.simulator-controls-panel {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  overflow: hidden;
+}
+
+/* Button styles and animations */
+button:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* Selected point indicator */
+.selected-point-indicator {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  background-color: rgba(52, 152, 219, 0.15);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: #2980B9;
+  font-weight: 500;
+  gap: 6px;
+  flex-grow: 1;
+  justify-content: center;
+}
+
+/* Media queries for responsive design */
+@media (max-width: 768px) {
+  .simulator-layout {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .animation-controls {
+    flex-direction: column;
+  }
+  
+  /* Make buttons more touchable on mobile */
+  button {
+    padding: 12px !important;
+    min-height: 48px;
+  }
+}
+
+/* Helper classes */
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.text-center {
+  text-align: center;
+}
+
+/* Footer styling */
+.simulator-footer {
+  width: 100%;
+  margin-top: 16px;
+  text-align: center;
+  color: #95A5A6;
+  font-size: 0.9rem;
+  padding: 16px 0;
+  border-top: 1px solid #e7e7e7;
+}
+
+/* Animation buttons */
+.btn-animation {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  min-width: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-start {
+  background-color: #3498DB;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  cursor: pointer;
+}
+
+.btn-start:disabled {
+  background-color: #CBD5E1;
+  color: #7C8A9A;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btn-restart {
+  background-color: #2ECC71;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  cursor: pointer;
+}
+
+.btn-restart:disabled {
+  background-color: #CBD5E1;
+  color: #7C8A9A;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btn-icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+}

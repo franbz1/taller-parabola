@@ -198,25 +198,28 @@ function App() {
     setTimeout(() => setIniciarAnimacion(true), 100);
   };
 
+  // Aplicar los parámetros de lanzamiento calculados
+  const handleApplyLaunchParams = () => {
+    if (launchParams) {
+      setAnguloCañon(launchParams.angle);
+      setVelocidadCañon(launchParams.speed);
+      // Resetear animación al aplicar nuevos parámetros
+      setIniciarAnimacion(false);
+    }
+  };
+
   return (
-    <div 
-      ref={containerRef}
-      style={{ 
-        fontFamily: 'Arial, sans-serif', 
-        width: '100%',
-        maxWidth: '1200px', 
-        margin: '0 auto', 
-        padding: '10px' 
-      }}
-    >
-      <header style={{ marginBottom: '20px', textAlign: 'center' }}>
-        <h1 style={{ color: '#333', fontSize: 'clamp(1.5rem, 4vw, 2rem)' }}>Simulador de Trayectoria Parabólica</h1>
+    <div className="simulator-container" ref={containerRef}>
+      <header>
+        <h1>Simulador de Trayectoria Parabólica</h1>
+        <p>Estudio interactivo de proyectiles y objetos en caída libre</p>
       </header>
+
       <main>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ width: '100%' }}>
+        <div className="simulator-layout">
+          {/* Panel izquierdo: Canvas y controles de animación */}
+          <div className="simulator-canvas-panel">
+            <div className="canvas-container">
               <PlanoCartesiano
                 escala={escalaCanvas}
                 intervaloMarcas={250}
@@ -232,7 +235,8 @@ function App() {
                 iniciarAnimacion={iniciarAnimacion}
                 interception={interception}
               />
-              
+            </div>
+            
               <div style={{ 
                 marginTop: '15px', 
                 display: 'flex', 
@@ -240,9 +244,9 @@ function App() {
                 gap: '10px',
                 flexWrap: 'wrap'
               }}>
-                <button 
-                  onClick={handleStartAnimation} 
-                  disabled={iniciarAnimacion || (!puntoSeleccionado && trajectory.length === 0)}
+              <button 
+                onClick={handleStartAnimation} 
+                disabled={iniciarAnimacion || (!puntoSeleccionado && trajectory.length === 0)}
                   style={{
                     padding: '8px 16px',
                     backgroundColor: iniciarAnimacion ? '#ccc' : '#4CAF50',
@@ -253,12 +257,12 @@ function App() {
                     fontWeight: 500
                   }}
                 >
-                  Iniciar Animación
-                </button>
-                
-                <button 
-                  onClick={handleRestartAnimation} 
-                  disabled={!iniciarAnimacion}
+                Iniciar Animación
+              </button>
+              
+              <button 
+                onClick={handleRestartAnimation} 
+                disabled={!iniciarAnimacion}
                   style={{
                     padding: '8px 16px',
                     backgroundColor: !iniciarAnimacion ? '#ccc' : '#2196F3',
@@ -269,11 +273,24 @@ function App() {
                     fontWeight: 500
                   }}
                 >
-                  Reiniciar Animación
-                </button>
-              </div>
+                Reiniciar Animación
+              </button>
+
+              {/* Indicador visual de coordenadas seleccionadas */}
+              {puntoSeleccionado && (
+                <div className="selected-point-indicator">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                  <span>Avión en: ({puntoSeleccionado.x.toFixed(1)}, {puntoSeleccionado.y.toFixed(1)})</span>
+                </div>
+              )}
             </div>
-            
+          </div>
+          
+          {/* Panel derecho: Datos de simulación */}
+          <div className="simulator-controls-panel">
             <DatosSimulacion 
               anguloCañon={anguloCañon}
               onAnguloChange={handleAnguloChange}
@@ -289,12 +306,11 @@ function App() {
               showInterception={showInterception}
               umbral={umbral}
               onumbralChange={handleUmbralChange}
-              // Nuevas props para interceptHeight
               interceptHeight={interceptHeight}
               onInterceptHeightChange={handleInterceptHeightChange}
               launchParams={launchParams}
               launchError={launchError}
-              // Nuevas props para coordenadas manuales
+              onApplyLaunchParams={handleApplyLaunchParams}
               inputCoordX={inputCoordX}
               inputCoordY={inputCoordY}
               onInputCoordXChange={handleInputCoordXChange}
@@ -303,6 +319,11 @@ function App() {
             />
           </div>
         </div>
+        
+        {/* Footer con información adicional */}
+        <footer className="simulator-footer">
+          <p>Simulador de Trayectoria Parabólica v2.0 | Desarrollado con fines educativos UCC</p>
+        </footer>
       </main>
     </div>
   )

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { DibujanteCanvas } from "./dibujante-canvas"
+import { DibujanteCanon } from "./dibujante-canon"
 import { ControladorTrayectoria } from "./controlador-trayectoria"
 import { canvasACoordenadas } from "./utilidades"
 import { Point, InterceptionResult } from "../../lib/parabolicMotion"
@@ -127,6 +128,10 @@ export const PlanoCartesiano = ({
     // Punto de intercepción si existe
     const puntoIntercepcion = interception?.intercepted && interception.point ? interception.point : null;
     
+    // Determinar si debemos mostrar el efecto de disparo (solo en el primer frame de la animación)
+    const mostrarDisparo = iniciarAnimacion && animacionComenzada && puntosVisiblesTrayectoria.length <= 1;
+    
+    // Dibujar el plano con todos sus componentes
     dibujante.dibujarPlano(
       puntoSeleccionado, 
       puntosVisiblesTrayectoria,
@@ -134,6 +139,22 @@ export const PlanoCartesiano = ({
       puntoIntercepcion,
       mostrarExplosion
     )
+
+    // Dibujar el cañón con efecto de disparo si corresponde
+    const origenX = 40;  // Mismo valor que en dibujarPlano
+    const origenY = alto - 40;  // Mismo valor que en dibujarPlano
+    
+    // Usar la nueva clase DibujanteCanon para dibujar el cañón
+    const ctx = dibujante.getContext();
+    if (ctx) {
+      DibujanteCanon.dibujar(
+        ctx, 
+        origenX, 
+        origenY, 
+        anguloInicial, 
+        mostrarDisparo
+      );
+    }
   }, [
     escala, 
     intervaloMarcas, 
@@ -146,6 +167,8 @@ export const PlanoCartesiano = ({
     puntosVisiblesFreeFall,
     interception,
     mostrarExplosion,
+    iniciarAnimacion,
+    animacionComenzada,
   ])
   
   // Efecto para reiniciar los puntos visibles cuando cambia la trayectoria
