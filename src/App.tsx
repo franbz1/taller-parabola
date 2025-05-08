@@ -2,8 +2,8 @@ import './App.css'
 import PlanoCartesiano from './components/canvas/PlanoCartesiano';
 import DatosSimulacion from './components/DatosSimulacion';
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { useTrajectory, useFreeFall, useInterception } from './hooks/useParabolicMotion';
-import type { InterceptionResult } from './lib/parabolicMotion';
+import { useTrajectory, useFreeFall, useInterception, useInterceptionLaunch } from './hooks/useParabolicMotion';
+import { type InterceptionResult } from './lib/parabolicMotion';
 
 function App() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -14,6 +14,7 @@ function App() {
   const [escalaCanvas, setEscalaCanvas] = useState(0.5);
   const [iniciarAnimacion, setIniciarAnimacion] = useState(false);
   const [umbral, setUmbral] = useState(0.5)
+  const [interceptHeight, setInterceptHeight] = useState<string>("");
 
   // Estados para los inputs de coordenadas
   const [inputCoordX, setInputCoordX] = useState<string>("");
@@ -88,6 +89,28 @@ function App() {
     return interceptionResult;
   }, [interceptionResult, puntoSeleccionado]);
   
+  // Preparar parámetros para useInterceptionLaunch
+  const interceptHeightValue = useMemo(() => {
+    if (!interceptHeight || isNaN(parseFloat(interceptHeight)) || parseFloat(interceptHeight) < 0) {
+      return undefined;
+    }
+    return parseFloat(interceptHeight);
+  }, [interceptHeight]);
+
+  // Calcular parámetros para interceptación en altura específica
+  const interceptionLaunchResult = useInterceptionLaunch(
+    puntoSeleccionado || { x: 0, y: 0 },
+    interceptHeightValue || 0
+  );
+  
+  // Filtrar resultados cuando no hay datos suficientes
+  const { launchParams, error: launchError } = useMemo(() => {
+    if (!puntoSeleccionado || !interceptHeightValue) {
+      return {};
+    }
+    return interceptionLaunchResult;
+  }, [puntoSeleccionado, interceptHeightValue, interceptionLaunchResult]);
+  
   // Determinar si debemos mostrar resultados de intercepción
   const showInterception = puntoSeleccionado !== null;
 
@@ -126,6 +149,10 @@ function App() {
       setIniciarAnimacion(false)
     }
   }
+
+  const handleInterceptHeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInterceptHeight(e.target.value);
+  };
 
   const handlePuntoSeleccionado = (coordenadas: { x: number; y: number }) => {
     setPuntoSeleccionado(coordenadas);
@@ -262,6 +289,11 @@ function App() {
               showInterception={showInterception}
               umbral={umbral}
               onumbralChange={handleUmbralChange}
+              // Nuevas props para interceptHeight
+              interceptHeight={interceptHeight}
+              onInterceptHeightChange={handleInterceptHeightChange}
+              launchParams={launchParams}
+              launchError={launchError}
               // Nuevas props para coordenadas manuales
               inputCoordX={inputCoordX}
               inputCoordY={inputCoordY}

@@ -58,6 +58,22 @@ interface DatosSimulacionProps {
    * Si se debe mostrar el resultado de intercepción
    */
   showInterception: boolean;
+  /**
+   * Altura deseada para interceptación
+   */
+  interceptHeight: string;
+  /**
+   * Manejador de evento para cambio de altura de interceptación
+   */
+  onInterceptHeightChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  /**
+   * Parámetros de lanzamiento calculados para interceptación
+   */
+  launchParams?: { angle: number; speed: number };
+  /**
+   * Error de cálculo de interceptación
+   */
+  launchError?: string;
 
   // Nuevas props para coordenadas manuales
   inputCoordX: string;
@@ -85,6 +101,11 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
   puntoSeleccionado,
   interception,
   showInterception,
+  // Nuevas props
+  interceptHeight,
+  onInterceptHeightChange,
+  launchParams,
+  launchError,
   // Destructurar nuevas props
   inputCoordX,
   onInputCoordXChange,
@@ -194,6 +215,34 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
           Establecer Punto
         </button>
       </div>
+
+      {/* Input para altura de interceptación */}
+      {puntoSeleccionado && (
+        <div style={{ marginBottom: '16px' }}>
+          <label htmlFor="intercept-height" style={{
+            display: 'block',
+            fontSize: '14px',
+            fontWeight: '500',
+            marginBottom: '4px'
+          }}>
+            Altura de interceptación deseada (m):
+          </label>
+          <input
+            id="intercept-height"
+            type="number"
+            min="0"
+            step="0.1"
+            value={interceptHeight}
+            onChange={onInterceptHeightChange}
+            style={{
+              width: '100%',
+              padding: '8px',
+              border: '1px solid #d1d5db',
+              borderRadius: '4px'
+            }}
+          />
+        </div>
+      )}
 
       {/* Control de ángulo */}
       <div style={{ marginBottom: '16px' }}>
@@ -306,9 +355,9 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
         }}>
           <h4 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>Trayectoria del Proyectil</h4>
           <div style={{ fontSize: '13px', lineHeight: '1.5' }}>
-            <div><strong>Alcance máximo:</strong> {range.toFixed(2)} m</div>
-            <div><strong>Altura máxima:</strong> {maxHeight.toFixed(2)} m</div>
-            <div><strong>Tiempo de vuelo:</strong> {flightTime.toFixed(2)} s</div>
+            <div><strong>Alcance máximo:</strong> {range.toFixed(4)} m</div>
+            <div><strong>Altura máxima:</strong> {maxHeight.toFixed(4)} m</div>
+            <div><strong>Tiempo de vuelo:</strong> {flightTime.toFixed(4)} s</div>
           </div>
         </div>
 
@@ -327,7 +376,7 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
           </div>
         )}
 
-        {/* Resultado de intercepción */}
+        {/* Resultado de interceptación */}
         {showInterception && (
           <div style={{
             padding: '8px',
@@ -340,13 +389,35 @@ const DatosSimulacion: React.FC<DatosSimulacionProps> = ({
               <div style={{ fontSize: '13px', lineHeight: '1.5' }}>
                 <div><strong>¡Interceptado!</strong></div>
                 <div><strong>Posición:</strong> ({interception.point?.x.toFixed(1)}, {interception.point?.y.toFixed(1)})</div>
-                <div><strong>Tiempo proyectil:</strong> {interception.timeParabolic?.toFixed(2)} s</div>
-                <div><strong>Tiempo objeto:</strong> {interception.timeFreefall?.toFixed(2)} s</div>
+                <div><strong>Tiempo proyectil:</strong> {interception.timeParabolic?.toFixed(4)} s</div>
+                <div><strong>Tiempo objeto:</strong> {interception.timeFreefall?.toFixed(4)} s</div>
               </div>
             ) : (
               <div style={{ fontSize: '13px' }}>
                 <div><strong>No hubo intercepción</strong></div>
-                <div><strong>Distancia mínima:</strong> {interception.minDistance.toFixed(2)} m</div>
+                <div><strong>Distancia mínima:</strong> {interception.minDistance.toFixed(4)} m</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Resultado de cálculo de interceptación */}
+        {puntoSeleccionado && interceptHeight && (
+          <div style={{
+            padding: '8px',
+            backgroundColor: launchError ? '#fff1f0' : '#f6ffed',
+            borderRadius: '4px',
+            border: `1px solid ${launchError ? '#ffa39e' : '#b7eb8f'}`
+          }}>
+            <h4 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>Parámetros para Interceptación a {interceptHeight}m</h4>
+            {launchParams ? (
+              <div style={{ fontSize: '13px', lineHeight: '1.5' }}>
+                <div><strong>Ángulo requerido:</strong> {launchParams.angle.toFixed(4)}°</div>
+                <div><strong>Velocidad requerida:</strong> {launchParams.speed.toFixed(4)} m/s</div>
+              </div>
+            ) : (
+              <div style={{ fontSize: '13px', color: '#cf1322' }}>
+                {launchError || "Sin datos de interceptación"}
               </div>
             )}
           </div>

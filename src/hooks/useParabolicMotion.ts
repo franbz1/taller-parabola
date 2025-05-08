@@ -5,12 +5,15 @@ import {
   calculateFlightTime,
   calculateTrajectory,
   calculateFreeFall,
-  detectInterception
+  detectInterception,
+  calculateInterceptionLaunch
 } from '../lib/parabolicMotion';
 import type {
   TrajectoryData,
   FreeFallData,
-  InterceptionResult
+  InterceptionResult,
+  Point,
+  LaunchParams
 } from '../lib/parabolicMotion';
 
 /**
@@ -20,12 +23,10 @@ import type {
 export function useTrajectory(data: TrajectoryData) {
   const { initialSpeed, angle } = data;
 
-  // Rango, altura máxima y tiempo de vuelo no dependen de la posición inicial
   const range = useMemo(() => calculateRange(initialSpeed, angle), [initialSpeed, angle]);
   const maxHeight = useMemo(() => calculateMaxHeight(initialSpeed, angle), [initialSpeed, angle]);
   const flightTime = useMemo(() => calculateFlightTime(initialSpeed, angle), [initialSpeed, angle]);
 
-  // Trayectoria como array de puntos absolutos (incluye initialPosition si viene en data)
   const trajectory = useMemo(
     () => calculateTrajectory(data),
     [data.initialPosition?.x, data.initialPosition?.y, data.initialSpeed, data.angle, data.timeStep, data.maxTime]
@@ -44,7 +45,6 @@ export function useTrajectory(data: TrajectoryData) {
  * @param data Parámetros de la caída libre (incluye optional initialPosition)
  */
 export function useFreeFall(data: FreeFallData) {
-  // Free-fall trajectory from any starting point (initialPosition) or height
   const freeFallTrajectory = useMemo(
     () => calculateFreeFall(data),
     [data.initialPosition?.x, data.initialPosition?.y, data.initialHorizontalSpeed, data.timeStep]
@@ -84,4 +84,29 @@ export function useInterception(
   );
 
   return result;
+}
+
+/**
+ * Hook para obtener ángulo y velocidad inicial necesarios para que
+ * una parábola desde (0,0) intercepte una caída libre que parte
+ * de `fallOrigin` en la altura `interceptHeight`.
+ *
+ * @param fallOrigin  Punto de inicio de la caída libre ({ x, y })
+ * @param interceptHeight  Altura a la cual interceptar (>= 0)
+ * @returns Un objeto con:
+ *  - launchParams: { angle, speed } si todo va bien
+ *  - error: mensaje en caso de fallo de validación
+ */
+export function useInterceptionLaunch(
+  fallOrigin: Point,
+  interceptHeight: number
+): { launchParams?: LaunchParams; error?: string } {
+  return useMemo(() => {
+    try {
+      const launchParams = calculateInterceptionLaunch(fallOrigin, interceptHeight);
+      return { launchParams };
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : 'Unknown error' };
+    }
+  }, [fallOrigin.x, fallOrigin.y, interceptHeight]);
 }
