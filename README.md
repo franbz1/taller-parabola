@@ -2,6 +2,8 @@
 
 Una aplicación web interactiva desarrollada en React y TypeScript que simula el movimiento parabólico de proyectiles y la intercepción con objetos en caída libre.
 
+![image](https://github.com/user-attachments/assets/37ea4681-455d-4ff1-a0f8-aa5c3000d5c5)
+
 ## 🌟 Características
 
 - **Simulación de Trayectoria Parabólica**: Visualización en tiempo real del movimiento de proyectiles
